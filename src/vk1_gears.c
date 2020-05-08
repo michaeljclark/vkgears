@@ -152,8 +152,10 @@ typedef struct gears_app
     VkColorSpaceKHR color_space;
     VkSurfaceCapabilitiesKHR surface_capabilities;
     VkSwapchainKHR swapchain;
+    VkSampleCountFlags sample_count;
     uint32_t swapchain_image_count;
     gears_swapchain_buffer *swapchain_buffers;
+    gears_image_buffer resolve_buffer;
     gears_image_buffer depth_buffer;
     VkCommandPool cmd_pool;
     VkCommandBuffer *cmd_buffers;
@@ -173,6 +175,7 @@ typedef struct gears_app
     gears_view_rotation rotation;
     gears_app_gear gear[3];
     uint32_t animate_enable;
+    uint32_t multisampling_enable;
     uint32_t validation_enable;
 } gears_app;
 
@@ -488,6 +491,7 @@ static void gears_init_app(gears_app *app, const char *app_name,
     app->rotation.angle = 0.f;
 
     app->validation_enable = VK_FALSE;
+    app->multisampling_enable = VK_TRUE;
     app->animate_enable = VK_TRUE;
 }
 
@@ -936,6 +940,49 @@ static void gears_destroy_image(gears_app *app, gears_image_buffer *imbuf)
     imbuf->memory = VK_NULL_HANDLE;
 }
 
+
+static uint32_t max_sample_count(VkSampleCountFlags counts)
+{
+    if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+    if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+    if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+    if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+    if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+    if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+    return VK_SAMPLE_COUNT_1_BIT;
+}
+
+static void gears_destroy_resolve_buffer(gears_app *app)
+{
+    if (app->resolve_buffer.image != VK_NULL_HANDLE) {
+        gears_destroy_image(app, &app->resolve_buffer);
+    }
+}
+
+static void gears_create_resolve_buffer(gears_app *app)
+{
+    vkGetPhysicalDeviceProperties(app->physdev, &app->physdev_props);
+
+    /* set the maximum sample count if multisampling is enabled */
+    if (app->multisampling_enable) {
+        app->sample_count = max_sample_count(
+            app->physdev_props.limits.framebufferColorSampleCounts &
+            app->physdev_props.limits.framebufferDepthSampleCounts);
+    } else {
+        app->sample_count = VK_SAMPLE_COUNT_1_BIT;
+    }
+
+    /* disable multisampling if only one sample */
+    if (app->sample_count == VK_SAMPLE_COUNT_1_BIT) {
+        app->multisampling_enable = VK_FALSE;
+        return;
+    }
+
+    gears_create_image(app, &app->resolve_buffer, app->format,
+        app->sample_count, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
 static void gears_destroy_depth_buffer(gears_app *app)
 {
     gears_destroy_image(app, &app->depth_buffer);
@@ -944,7 +991,7 @@ static void gears_destroy_depth_buffer(gears_app *app)
 static void gears_create_depth_buffer(gears_app *app)
 {
     gears_create_image(app, &app->depth_buffer, VK_FORMAT_D32_SFLOAT,
-        VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        app->sample_count, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
@@ -1037,20 +1084,22 @@ static void gears_destroy_render_pass(gears_app *app)
 
 static void gears_create_render_pass(gears_app *app)
 {
-   const VkAttachmentDescription attachments[2] = {
+   const VkAttachmentDescription attachments[3] = {
         {
             .format = app->format,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .samples = app->sample_count,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
             .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .finalLayout = app->multisampling_enable
+                ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         },
         {
             .format = app->depth_buffer.format,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .samples = app->sample_count,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
             .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
@@ -1058,14 +1107,28 @@ static void gears_create_render_pass(gears_app *app)
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         },
+        {
+            .format = app->format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        },
     };
-    const VkAttachmentReference color_reference = {
+    const VkAttachmentReference color_ref = {
         .attachment = 0,
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
-    const VkAttachmentReference depth_reference = {
+    const VkAttachmentReference depth_ref = {
         .attachment = 1,
         .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+    const VkAttachmentReference resolve_ref = {
+        .attachment = 2,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
     const VkSubpassDescription subpass = {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1073,16 +1136,16 @@ static void gears_create_render_pass(gears_app *app)
         .inputAttachmentCount = 0,
         .pInputAttachments = NULL,
         .colorAttachmentCount = 1,
-        .pColorAttachments = &color_reference,
-        .pResolveAttachments = NULL,
-        .pDepthStencilAttachment = &depth_reference,
+        .pColorAttachments = &color_ref,
+        .pResolveAttachments = app->multisampling_enable ? &resolve_ref : NULL,
+        .pDepthStencilAttachment = &depth_ref,
         .preserveAttachmentCount = 0,
         .pPreserveAttachments = NULL,
     };
     const VkRenderPassCreateInfo render_pass_create_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = NULL,
-        .attachmentCount = 2,
+        .attachmentCount = app->multisampling_enable ? 3 : 2,
         .pAttachments = attachments,
         .subpassCount = 1,
         .pSubpasses = &subpass,
@@ -1105,21 +1168,24 @@ static void gears_destroy_frame_buffers(gears_app *app)
 
 static void gears_create_frame_buffers(gears_app *app)
 {
-    VkImageView attachments[2] = { VK_NULL_HANDLE, app->depth_buffer.view };
+    VkImageView attachments[3] = {
+        app->resolve_buffer.view, app->depth_buffer.view, VK_NULL_HANDLE
+    };
 
     const VkFramebufferCreateInfo framebuffer_create_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = NULL,
         .renderPass = app->render_pass,
-        .attachmentCount = 2,
+        .attachmentCount = app->multisampling_enable ? 3 : 2,
         .pAttachments = attachments,
         .width = app->width,
         .height = app->height,
         .layers = 1,
     };
 
+    uint32_t color_idx = app->multisampling_enable ? 2 : 0;
     for (uint32_t i = 0; i < app->swapchain_image_count; i++) {
-        attachments[0] = app->swapchain_buffers[i].view;
+        attachments[color_idx] = app->swapchain_buffers[i].view;
         VK_CALL(vkCreateFramebuffer(app->device,
             &framebuffer_create_info, NULL,
             &app->swapchain_buffers[i].framebuffer));
@@ -1410,7 +1476,7 @@ static void gears_create_pipeline(gears_app *app)
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .rasterizationSamples = app->sample_count,
         .sampleShadingEnable = VK_FALSE,
         .minSampleShading = 0.0f,
         .pSampleMask = NULL,
@@ -1740,7 +1806,8 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
 {
     VkClearValue clear_values[] = {
         { .color = { { 0.0f, 0.0f, 0.0f, 1.0f } } },
-        { .depthStencil = { .depth = 1.0f, .stencil = 0 } }
+        { .depthStencil = { .depth = 1.0f, .stencil = 0 } },
+        { .color = { { 0.0f, 0.0f, 0.0f, 1.0f } } },
     };
 
     VkRenderPassBeginInfo rp_info = {
@@ -1750,7 +1817,7 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
         .renderArea.offset.x = 0,
         .renderArea.offset.y = 0,
         .renderArea.extent = app->surface_capabilities.currentExtent,
-        .clearValueCount = 2,
+        .clearValueCount = 3,
         .pClearValues = clear_values,
     };
 
@@ -1809,6 +1876,7 @@ static void gears_init(gears_app *app, const int argc, const char **argv)
     gears_find_surface_format(app);
     gears_create_swapchain(app);
     gears_create_swapchain_buffers(app);
+    gears_create_resolve_buffer(app);
     gears_create_depth_buffer(app);
     gears_create_command_pool(app);
     gears_create_command_buffers(app);
@@ -1844,6 +1912,7 @@ static void gears_cleanup(gears_app *app)
     gears_destroy_command_buffers(app);
     gears_destroy_command_pool(app);
     gears_destroy_depth_buffer(app);
+    gears_destroy_resolve_buffer(app);
     gears_destroy_swapchain_buffers(app);
     gears_destroy_swapchain(app);
     gears_destroy_logical_device(app);
