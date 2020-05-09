@@ -180,6 +180,7 @@ typedef struct gears_app
     uint32_t animation_enable;
     uint32_t multisampling_enable;
     uint32_t validation_enable;
+    uint32_t api_dump_enable;
 } gears_app;
 
 typedef enum {
@@ -489,6 +490,7 @@ static void gears_init_app(gears_app *app, const char *app_name,
     app->rotation.angle = 0.f;
 
     app->verbose_enable = VK_FALSE;
+    app->api_dump_enable = VK_FALSE;
     app->validation_enable = VK_FALSE;
     app->multisampling_enable = VK_TRUE;
     app->animation_enable = VK_TRUE;
@@ -515,6 +517,7 @@ static void gears_parse_options(gears_app *app, const int argc, const char **arg
     const commandline_option options[] = {
         { .name = "max-swapchain-images", .ptr_integer = &app->max_swapchain_images },
         { .name = "max-samples", .ptr_integer = &app->max_samples },
+        { .name = "api-dump", .ptr_boolean = &app->api_dump_enable },
         { .name = "validation", .ptr_boolean = &app->validation_enable },
         { .name = "multisampling", .ptr_boolean = &app->multisampling_enable },
         { .name = "animation", .ptr_boolean = &app->animation_enable },
@@ -615,42 +618,60 @@ static void gears_destroy_instance(gears_app *app)
     app->instance = VK_NULL_HANDLE;
 }
 
+static int check_layers(VkLayerProperties *instance_layers,
+    size_t instance_count, const char **check_layers, size_t check_count)
+{
+    size_t found = 0;
+    for (size_t i = 0; i < check_count; i++) {
+        for (size_t j = 0; j < instance_count; j++) {
+            if (!strcmp(check_layers[i], instance_layers[j].layerName))
+            {
+                found++;
+                break;
+            }
+        }
+    }
+    return found == check_count;
+}
+
+#define array_size(array) sizeof(array) / sizeof(array[0])
+
 static void gears_create_instance(gears_app *app)
 {
     uint32_t required_extension_count = 0;
-    uint32_t instance_layer_count = 0;
+    uint32_t instance_count = 0;
     uint32_t validation_layer_count = 0;
     uint32_t enabled_extensions_count = 0;
+    uint32_t enabled_layer_count = 0;
     const char **required_extensions = NULL;
     const char *extension_names[64];
-    const char *enabled_layers[64];
+    const char *layer_names[64];
 
-    const char *validation_layers[] = {
+    static const char *api_dump_layers[] = {
+        "VK_LAYER_LUNARG_api_dump"
+    };
+
+    static const char *validation_layers[] = {
         "VK_LAYER_KHRONOS_validation"
     };
 
-    VK_CALL(vkEnumerateInstanceLayerProperties(&instance_layer_count, NULL));
-    if (instance_layer_count > 0) {
+    VK_CALL(vkEnumerateInstanceLayerProperties(&instance_count, NULL));
+    if (instance_count > 0) {
         VkLayerProperties *instance_layers =
-                malloc(sizeof (VkLayerProperties) * instance_layer_count);
-        VK_CALL(vkEnumerateInstanceLayerProperties(&instance_layer_count,
+                malloc(sizeof (VkLayerProperties) * instance_count);
+        VK_CALL(vkEnumerateInstanceLayerProperties(&instance_count,
                 instance_layers));
-        size_t count = sizeof(validation_layers) / sizeof(validation_layers[0]);
-        size_t found = 0;
-        for (size_t i = 0; i < count; i++) {
-            for (size_t j = 0; j < instance_layer_count; j++) {
-                if (!strcmp(validation_layers[i], instance_layers[j].layerName))
-                {
-                    found++;
-                    break;
-                }
+        if (app->api_dump_enable && check_layers(instance_layers,
+            instance_count, api_dump_layers, array_size(api_dump_layers))) {
+            for (size_t i = 0; i < array_size(api_dump_layers); i++) {
+                layer_names[enabled_layer_count++] = api_dump_layers[i];
             }
         }
-        if (app->validation_enable && found == count) {
-            for (size_t i = 0; i < count; i++) {
-                enabled_layers[0] = validation_layers[i];
+        if (app->validation_enable && check_layers(instance_layers,
+            instance_count, validation_layers, array_size(validation_layers))) {
+            for (size_t i = 0; i < array_size(validation_layers); i++) {
+                layer_names[enabled_layer_count++] = validation_layers[i];
             }
-            validation_layer_count = count;
         }
         free(instance_layers);
     }
@@ -678,8 +699,8 @@ static void gears_create_instance(gears_app *app)
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = NULL,
         .pApplicationInfo = &ai,
-        .enabledLayerCount = validation_layer_count,
-        .ppEnabledLayerNames = (const char *const *)validation_layers,
+        .enabledLayerCount = enabled_layer_count,
+        .ppEnabledLayerNames = (const char *const *)layer_names,
         .enabledExtensionCount = enabled_extensions_count,
         .ppEnabledExtensionNames = (const char *const *)extension_names,
     };
