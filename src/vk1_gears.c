@@ -599,7 +599,7 @@ static void gears_create_window(gears_app *app)
 {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwSetErrorCallback(gears_glfw_error);
-    app->window = glfwCreateWindow(app->width, app->height, app->name,
+    app->window = glfwCreateWindow(app->width, app->height, "VK1 Gears",
         NULL, NULL);
     if (!app->window) {
         panic("glfwCreateWindow failed\n");
@@ -1804,16 +1804,12 @@ static void gears_update_uniform_buffer(gears_app *app, size_t j)
 
     const vec3 lightpos = { 5.f, 5.f, 10.f };
 
-    const float znear = 5.0f;
-    const float zfar  = 30.0f;
-    const float xmax  = znear * 0.5f;
-
     const float h = (float) app->height / (float) app->width;
 
-    mat4x4_frustum(p, -xmax, xmax, -xmax*h, xmax*h, znear, zfar);
+    mat4x4_frustum(p, -1.0, 1.0, -h, h, 5.0, 60.0);
 
     /* create gear model and view matrices */
-    mat4x4_translate(v, 0.0, 0.0, -20.0);
+    mat4x4_translate(v, 0.0, 0.0, -40.0);
     mat4x4_rotate(v, v, 1.0, 0.0, 0.0, (app->rotation.rotx / 180) * M_PI);
     mat4x4_rotate(v, v, 0.0, 1.0, 0.0, (app->rotation.roty / 180) * M_PI);
     mat4x4_rotate(v, v, 0.0, 0.0, 1.0, (app->rotation.rotz / 180) * M_PI);
@@ -1951,7 +1947,7 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
 
 static void gears_init(gears_app *app, const int argc, const char **argv)
 {
-    gears_init_app(app, argv[0], 768, 768);
+    gears_init_app(app, argv[0], 300, 300);
     gears_parse_options(app, argc, argv);
     gears_init_glfw(app);
     gears_create_window(app);

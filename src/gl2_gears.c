@@ -203,7 +203,7 @@ static mat4x4 gm[3], m, v, p, mvp;
 static void draw(void)
 {
     /* create gear model and view matrices */
-    mat4x4_translate(v, 0.0, 0.0, -20.0);
+    mat4x4_translate(v, 0.0, 0.0, -40.0);
     mat4x4_rotate(v, v, 1.0, 0.0, 0.0, (view_rotx / 180) * M_PI);
     mat4x4_rotate(v, v, 0.0, 1.0, 0.0, (view_roty / 180) * M_PI);
     mat4x4_rotate(v, v, 0.0, 0.0, 1.0, (view_rotz / 180) * M_PI);
@@ -280,15 +280,9 @@ void key( GLFWwindow* window, int k, int s, int action, int mods )
 void reshape( GLFWwindow* window, int width, int height )
 {
     GLfloat h = (GLfloat) height / (GLfloat) width;
-    GLfloat xmax, znear, zfar;
 
-    znear = 5.0f;
-    zfar  = 30.0f;
-    xmax  = znear * 0.5f;
-
-    glViewport( 0, 0, (GLint) width, (GLint) height );
-
-    mat4x4_frustum(p, -xmax, xmax, -xmax*h, xmax*h, znear, zfar);
+    glViewport(0, 0, (GLint) width, (GLint) height);
+    mat4x4_frustum(p, -1.0, 1.0, -h, h, 5.0, 60.0);
     uniform_matrix_4fv("u_projection", (const GLfloat *)p);
 }
 
@@ -348,7 +342,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_DEPTH_BITS, 16);
     //glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
-    window = glfwCreateWindow( 768, 768, "Gears", NULL, NULL );
+    window = glfwCreateWindow( 300, 300, "GL2 Gears", NULL, NULL );
     if (!window)
     {
         fprintf( stderr, "Failed to open GLFW window\n" );

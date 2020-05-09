@@ -252,19 +252,14 @@ void key( GLFWwindow* window, int k, int s, int action, int mods )
 void reshape( GLFWwindow* window, int width, int height )
 {
     GLfloat h = (GLfloat) height / (GLfloat) width;
-    GLfloat xmax, znear, zfar;
 
-    znear = 5.0f;
-    zfar  = 30.0f;
-    xmax  = znear * 0.5f;
-
-    glViewport( 0, 0, (GLint) width, (GLint) height );
-    glMatrixMode( GL_PROJECTION );
+    glViewport(0, 0, (GLint) width, (GLint) height);
+    glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glFrustum( -xmax, xmax, -xmax*h, xmax*h, znear, zfar );
-    glMatrixMode( GL_MODELVIEW );
+    glFrustum(-1.0, 1.0, -h, h, 5.0, 60.0);
+    glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef( 0.0, 0.0, -20.0 );
+    glTranslatef(0.0, 0.0, -40.0);
 }
 
 
@@ -320,7 +315,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_DEPTH_BITS, 16);
     //glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
-    window = glfwCreateWindow( 768, 768, "Gears", NULL, NULL );
+    window = glfwCreateWindow( 300, 300, "GL1 Gears", NULL, NULL );
     if (!window)
     {
         fprintf( stderr, "Failed to open GLFW window\n" );
