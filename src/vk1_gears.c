@@ -522,7 +522,6 @@ static void gears_create_window(gears_app *app)
     }
 
     glfwSetWindowUserPointer(app->window, app);
-    glfwSetFramebufferSizeCallback(app->window, gears_glfw_resize);
     glfwSetKeyCallback(app->window, gears_glfw_key);
 }
 
@@ -1921,6 +1920,25 @@ static void gears_cleanup(gears_app *app)
     gears_destroy_window(app);
 }
 
+static void gears_recreate_swapchain(gears_app *app)
+{
+    gears_reset_command_buffers(app);
+    gears_destroy_pipeline(app);
+    gears_destroy_frame_buffers(app);
+    gears_destroy_render_pass(app);
+    gears_destroy_depth_buffer(app);
+    gears_destroy_resolve_buffer(app);
+    gears_destroy_swapchain_buffers(app);
+    gears_destroy_swapchain(app);
+    gears_create_swapchain(app);
+    gears_create_swapchain_buffers(app);
+    gears_create_resolve_buffer(app);
+    gears_create_depth_buffer(app);
+    gears_create_render_pass(app);
+    gears_create_frame_buffers(app);
+    gears_create_pipeline(app);
+}
+
 static void gears_run(gears_app *app)
 {
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1971,7 +1989,11 @@ static void gears_run(gears_app *app)
 
         present_info.pImageIndices = &j;
         err = vkQueuePresentKHR(app->queue, &present_info);
-        if (err != VK_SUCCESS && err != VK_SUBOPTIMAL_KHR) {
+        if (err == VK_ERROR_OUT_OF_DATE_KHR) {
+            glfwGetFramebufferSize(app->window, &app->width, &app->height);
+            gears_recreate_swapchain(app);
+        }
+        else if (err != VK_SUCCESS && err != VK_SUBOPTIMAL_KHR) {
             panic("vkQueuePresentKHR failed: err=%d\n", err);
         }
     }
