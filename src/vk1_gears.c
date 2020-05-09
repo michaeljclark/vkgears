@@ -174,7 +174,10 @@ typedef struct gears_app
     VkPipeline pipeline;
     gears_view_rotation rotation;
     gears_app_gear gear[3];
-    uint32_t animate_enable;
+    uint32_t max_swapchain_images;
+    uint32_t max_samples;
+    uint32_t verbose_enable;
+    uint32_t animation_enable;
     uint32_t multisampling_enable;
     uint32_t validation_enable;
 } gears_app;
@@ -435,11 +438,6 @@ static void gears_glfw_error(int error_code, const char* error_desc)
     fprintf(stderr, "glfw_error: code=%d desc=%s\n", error_code, error_desc);
 }
 
-static void gears_glfw_resize(GLFWwindow* window, int width, int height)
-{
-    gears_app *app = (gears_app*)glfwGetWindowUserPointer(window);
-}
-
 static void gears_glfw_key(GLFWwindow* window, int key, int scancode,
                            int action, int mods)
 {
@@ -449,7 +447,7 @@ static void gears_glfw_key(GLFWwindow* window, int key, int scancode,
 
     switch (key) {
     case GLFW_KEY_A:
-        app->animate_enable = !app->animate_enable;
+        app->animation_enable = !app->animation_enable;
         break;
     case GLFW_KEY_Z:
         if( mods & GLFW_MOD_SHIFT )
@@ -478,21 +476,107 @@ static void gears_glfw_key(GLFWwindow* window, int key, int scancode,
 }
 
 static void gears_init_app(gears_app *app, const char *app_name,
-    uint32_t app_width, uint32_t app_height)
+    uint32_t app_width_default, uint32_t app_height_default)
 {
     memset(app, 0, sizeof(gears_app));
     app->name = app_name;
-    app->width = app_width;
-    app->height = app_height;
+    app->width = app_width_default;
+    app->height = app_height_default;
 
     app->rotation.rotx = 20.f;
     app->rotation.roty = 30.f;
     app->rotation.rotz = 0.f;
     app->rotation.angle = 0.f;
 
+    app->verbose_enable = VK_FALSE;
     app->validation_enable = VK_FALSE;
     app->multisampling_enable = VK_TRUE;
-    app->animate_enable = VK_TRUE;
+    app->animation_enable = VK_TRUE;
+    app->max_samples = VK_SAMPLE_COUNT_64_BIT;
+    app->max_swapchain_images = 3;
+}
+
+typedef struct commandline_option
+{
+    const char* name;
+    uint32_t *ptr_boolean;
+    uint32_t *ptr_integer;
+} commandline_option;
+
+static void gears_parse_options(gears_app *app, const int argc, const char **argv)
+{
+    uint32_t v = 1;
+    uint32_t print_help = 0;
+
+    /* assert(strlen(some_spaces)) >=
+       max(strlen(options[n].name)) for n in length(options) */
+    const char* some_spaces = "                    ";
+
+    const commandline_option options[] = {
+        { .name = "max-swapchain-images", .ptr_integer = &app->max_swapchain_images },
+        { .name = "max-samples", .ptr_integer = &app->max_samples },
+        { .name = "validation", .ptr_boolean = &app->validation_enable },
+        { .name = "multisampling", .ptr_boolean = &app->multisampling_enable },
+        { .name = "animation", .ptr_boolean = &app->animation_enable },
+        { .name = "verbose", .ptr_boolean = &app->verbose_enable },
+        { .name = "width", .ptr_integer = &app->width },
+        { .name = "height", .ptr_integer = &app->height },
+        { .name = "help", .ptr_integer = &print_help },
+    };
+
+    while(v < argc) {
+        int opt_idx = -1, bool_val = VK_TRUE;
+        for (uint32_t i = 0; i < sizeof(options)/sizeof(options[0]); i++) {
+            size_t optlen = strlen(options[i].name);
+            if (strlen(argv[v]) == optlen + 1 &&
+                memcmp(argv[v], "-", 1) == 0 &&
+                memcmp(argv[v]+1, options[i].name, optlen) == 0) {
+                opt_idx = i;
+                break;
+            } else if (options[i].ptr_boolean != NULL &&
+                strlen(argv[v]) == optlen + 4 &&
+                memcmp(argv[v], "-no-", 4) == 0 &&
+                memcmp(argv[v]+4, options[i].name, optlen) == 0) {
+                opt_idx = i;
+                bool_val = VK_FALSE;
+                break;
+            }
+        }
+        if (opt_idx == -1) {
+            fprintf(stderr, "*** error: %s: option unknown\n\n", argv[v]);
+            print_help = 1;
+            break;
+        }
+        if (options[opt_idx].ptr_integer) {
+            if (v + 1 >= argc) {
+                fprintf(stderr, "*** error: -%s option requires integer\n\n",
+                    argv[v]);
+                print_help = 1;
+                break;
+            } else {
+                *options[opt_idx].ptr_integer = atoi(argv[++v]);
+            }
+        } else if (options[opt_idx].ptr_boolean) {
+            *options[opt_idx].ptr_boolean = bool_val;
+        }
+        v++;
+    }
+
+    if (print_help) {
+        fprintf(stderr, "usage: %s [options]\n\n", argv[0]);
+        fprintf(stderr, "Options\n\n");
+        for (uint32_t i = 0; i < sizeof(options)/sizeof(options[0]); i++) {
+            const char * spaces = some_spaces + strlen(options[i].name);
+            if (options[i].ptr_boolean) {
+                fprintf(stderr, "-[no-]%s %s  enable or disable %s\n",
+                    options[i].name, spaces, options[i].name);
+            } else if (options[i].ptr_integer) {
+                fprintf(stderr, "-%s <int> %s specify %s\n",
+                    options[i].name, spaces, options[i].name);
+            }
+        }
+        exit(0);
+    }
 }
 
 static void gears_init_glfw(gears_app *app)
@@ -743,7 +827,7 @@ static void gears_destroy_swapchain(gears_app *app)
 
 static void gears_create_swapchain(gears_app *app)
 {
-    uint32_t surface_image_count = 3;
+    uint32_t min_image_count = app->max_swapchain_images;
     VkPresentModeKHR *present_modes = NULL;
     VkSurfaceTransformFlagsKHR surface_transform;
 
@@ -756,11 +840,11 @@ static void gears_create_swapchain(gears_app *app)
     assert(app->surface_capabilities.currentExtent.height == app->height);
 
     if (app->surface_capabilities.maxImageCount != 0 &&
-        surface_image_count > app->surface_capabilities.maxImageCount) {
-        surface_image_count = app->surface_capabilities.maxImageCount;
+        min_image_count > app->surface_capabilities.maxImageCount) {
+        min_image_count = app->surface_capabilities.maxImageCount;
     }
-    if (surface_image_count < app->surface_capabilities.minImageCount) {
-        surface_image_count = app->surface_capabilities.minImageCount;
+    if (min_image_count < app->surface_capabilities.minImageCount) {
+        min_image_count = app->surface_capabilities.minImageCount;
     }
     if (app->surface_capabilities.supportedTransforms &
         VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) {
@@ -779,7 +863,7 @@ static void gears_create_swapchain(gears_app *app)
         .pNext = NULL,
         .flags = 0,
         .surface = app->surface,
-        .minImageCount = surface_image_count,  
+        .minImageCount = min_image_count,
         .imageFormat = app->format,
         .imageColorSpace = app->color_space,
         .imageExtent = {
@@ -967,6 +1051,9 @@ static void gears_create_resolve_buffer(gears_app *app)
         app->sample_count = max_sample_count(
             app->physdev_props.limits.framebufferColorSampleCounts &
             app->physdev_props.limits.framebufferDepthSampleCounts);
+        if (app->sample_count > app->max_samples) {
+            app->sample_count = app->max_samples;
+        }
     } else {
         app->sample_count = VK_SAMPLE_COUNT_1_BIT;
     }
@@ -1865,6 +1952,7 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
 static void gears_init(gears_app *app, const int argc, const char **argv)
 {
     gears_init_app(app, argv[0], 768, 768);
+    gears_parse_options(app, argc, argv);
     gears_init_glfw(app);
     gears_create_window(app);
     gears_create_instance(app);
@@ -1939,6 +2027,23 @@ static void gears_recreate_swapchain(gears_app *app)
     gears_create_pipeline(app);
 }
 
+static void gears_print_info_verbose(gears_app *app)
+{
+    printf("device.name:           %s\n",
+        app->physdev_props.deviceName);
+    printf("vulkan.version:        %u.%u\n",
+        VK_VERSION_MAJOR(app->physdev_props.apiVersion),
+        VK_VERSION_MINOR(app->physdev_props.apiVersion));
+    printf("multisampling:         %s\n",
+        app->multisampling_enable ? "enabled" : "disabled");
+    if (app->multisampling_enable) {
+        printf("samples:               %d\n",
+            app->sample_count);
+    }
+    printf("swapchain.image.count: %d\n",
+        app->swapchain_image_count);
+}
+
 static void gears_run(gears_app *app)
 {
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1965,6 +2070,10 @@ static void gears_run(gears_app *app)
         .pResults = NULL,
     };
 
+    if (app->verbose_enable) {
+        gears_print_info_verbose(app);
+    }
+
     while (!glfwWindowShouldClose(app->window)) {
         glfwPollEvents();
 
@@ -1977,7 +2086,7 @@ static void gears_run(gears_app *app)
         VK_CALL(vkResetFences(app->device, 1,
             &app->swapchain_fences[j]));
 
-        if (app->animate_enable) {
+        if (app->animation_enable) {
             app->rotation.angle = 100.f * (float) glfwGetTime();
             gears_update_uniform_buffer(app, j);
         }
