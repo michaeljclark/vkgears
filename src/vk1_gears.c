@@ -156,10 +156,10 @@ typedef struct gears_app
     VkRenderPass render_pass;
     VkShaderModule frag_shader;
     VkShaderModule vert_shader;
-    VkDescriptorPool descriptor_pool;
-    VkDescriptorSetLayout descriptor_set_layout;
-    uint32_t descriptor_set_count;
-    VkDescriptorSet *descriptor_sets;
+    VkDescriptorPool desc_pool;
+    VkDescriptorSetLayout desc_set_layout;
+    uint32_t desc_set_count;
+    VkDescriptorSet *desc_sets;
     VkPipelineLayout pipeline_layout;
     VkPipelineCache pipeline_cache;
     VkPipeline pipeline;
@@ -1282,41 +1282,41 @@ static void gears_create_shaders(gears_app *app)
     app->frag_shader = gears_create_shader_from_file(app, frag_shader_filename);
 }
 
-static void gears_destroy_descriptor_pool(gears_app *app)
+static void gears_destroy_desc_pool(gears_app *app)
 {
-    vkDestroyDescriptorPool(app->device, app->descriptor_pool, NULL);
-    app->descriptor_pool = VK_NULL_HANDLE;
+    vkDestroyDescriptorPool(app->device, app->desc_pool, NULL);
+    app->desc_pool = VK_NULL_HANDLE;
 }
 
-static void gears_create_descriptor_pool(gears_app *app)
+static void gears_create_desc_pool(gears_app *app)
 {
-    const VkDescriptorPoolSize descriptor_pool_sizes[1] = {
+    const VkDescriptorPoolSize desc_pool_sizes[1] = {
         {
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .descriptorCount = 15,
         },
     };
-    VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
+    VkDescriptorPoolCreateInfo desc_pool_create_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
         .maxSets = 16,
         .poolSizeCount = 1,
-        .pPoolSizes = descriptor_pool_sizes
+        .pPoolSizes = desc_pool_sizes
     };
     VK_CALL(vkCreateDescriptorPool(app->device,
-        &descriptor_pool_create_info, NULL, &app->descriptor_pool));
+        &desc_pool_create_info, NULL, &app->desc_pool));
 }
 
-static void gears_destroy_descriptor_set_layouts(gears_app *app)
+static void gears_destroy_desc_set_layouts(gears_app *app)
 {
-    vkDestroyDescriptorSetLayout(app->device, app->descriptor_set_layout, NULL);
-    app->descriptor_set_layout = VK_NULL_HANDLE;
+    vkDestroyDescriptorSetLayout(app->device, app->desc_set_layout, NULL);
+    app->desc_set_layout = VK_NULL_HANDLE;
 }
 
-static void gears_create_descriptor_set_layouts(gears_app *app)
+static void gears_create_desc_set_layouts(gears_app *app)
 {
-    VkDescriptorSetLayoutBinding descriptor_set_layout_binding[1] = {
+    VkDescriptorSetLayoutBinding desc_set_layout_binding[1] = {
         {
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -1325,45 +1325,45 @@ static void gears_create_descriptor_set_layouts(gears_app *app)
             .pImmutableSamplers = NULL,
         },
     };
-    VkDescriptorSetLayoutCreateInfo descriptor_set_create_info = {
+    VkDescriptorSetLayoutCreateInfo desc_set_create_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
         .bindingCount = 1,
-        .pBindings = descriptor_set_layout_binding,
+        .pBindings = desc_set_layout_binding,
     };
     VK_CALL(vkCreateDescriptorSetLayout(app->device,
-        &descriptor_set_create_info, NULL, &app->descriptor_set_layout));
+        &desc_set_create_info, NULL, &app->desc_set_layout));
 }
 
-static void gears_destroy_descriptor_sets(gears_app *app)
+static void gears_destroy_desc_sets(gears_app *app)
 {
-    free(app->descriptor_sets);
-    app->descriptor_set_count = 0;
-    app->descriptor_sets = NULL;
+    free(app->desc_sets);
+    app->desc_set_count = 0;
+    app->desc_sets = NULL;
 }
 
-static void gears_create_descriptor_sets(gears_app *app)
+static void gears_create_desc_sets(gears_app *app)
 {
     VkDescriptorSetLayout *layouts;
 
-    app->descriptor_set_count = app->swapchain_image_count * 3;
+    app->desc_set_count = app->swapchain_image_count * 3;
 
-    layouts = malloc(sizeof(VkDescriptorSetLayout) * app->descriptor_set_count);
+    layouts = malloc(sizeof(VkDescriptorSetLayout) * app->desc_set_count);
     assert(layouts != NULL);
-    for (size_t i = 0; i < app->descriptor_set_count; i++) {
-        layouts[i] = app->descriptor_set_layout;
+    for (size_t i = 0; i < app->desc_set_count; i++) {
+        layouts[i] = app->desc_set_layout;
     }
-    app->descriptor_sets = malloc(sizeof(VkDescriptorSet) * app->descriptor_set_count);
-    assert(app->descriptor_sets != NULL);
+    app->desc_sets = malloc(sizeof(VkDescriptorSet) * app->desc_set_count);
+    assert(app->desc_sets != NULL);
     VkDescriptorSetAllocateInfo ds_alloc_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext = NULL,
-        .descriptorPool = app->descriptor_pool,
-        .descriptorSetCount = app->descriptor_set_count,
+        .descriptorPool = app->desc_pool,
+        .descriptorSetCount = app->desc_set_count,
         .pSetLayouts = layouts
     };
-    VK_CALL(vkAllocateDescriptorSets(app->device, &ds_alloc_info, app->descriptor_sets));
+    VK_CALL(vkAllocateDescriptorSets(app->device, &ds_alloc_info, app->desc_sets));
     free(layouts);
 }
 
@@ -1380,7 +1380,7 @@ static void gears_create_pipeline_layout(gears_app *app)
         .pNext = NULL,
         .flags = 0,
         .setLayoutCount = 1,
-        .pSetLayouts = &app->descriptor_set_layout,
+        .pSetLayouts = &app->desc_set_layout,
     };
     VK_CALL(vkCreatePipelineLayout(app->device,
         &pipeline_layout_create_info, NULL, &app->pipeline_layout));
@@ -1799,7 +1799,7 @@ static void gears_update_uniform_buffer(gears_app *app, size_t j)
         VkWriteDescriptorSet wds = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = NULL,
-            .dstSet = app->descriptor_sets[j * 3 + g],
+            .dstSet = app->desc_sets[j * 3 + g],
             .dstBinding = 0,
             .dstArrayElement = 0,
             .descriptorCount = 1,
@@ -1888,7 +1888,7 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
         VkDeviceSize offset = 0;
         vkCmdBindDescriptorSets(app->cmd_buffers[j],
             VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipeline_layout, 0, 1,
-            app->descriptor_sets + j * 3 + g, 0, NULL);
+            app->desc_sets + j * 3 + g, 0, NULL);
         vkCmdBindVertexBuffers(app->cmd_buffers[j],
             0, 1, &app->gear[g].vb.buffer, &offset);
         vkCmdBindIndexBuffer(app->cmd_buffers[j],
@@ -1924,9 +1924,9 @@ static void gears_init(gears_app *app, const int argc, const char **argv)
     gears_create_render_pass(app);
     gears_create_frame_buffers(app);
     gears_create_shaders(app);
-    gears_create_descriptor_pool(app);
-    gears_create_descriptor_set_layouts(app);
-    gears_create_descriptor_sets(app);
+    gears_create_desc_pool(app);
+    gears_create_desc_set_layouts(app);
+    gears_create_desc_sets(app);
     gears_create_pipeline_layout(app);
     gears_create_pipeline(app);
     gears_create_vertex_buffers(app);
@@ -1940,9 +1940,9 @@ static void gears_cleanup(gears_app *app)
     gears_destroy_vertex_buffers(app);
     gears_destroy_pipeline(app);
     gears_destroy_pipeline_layout(app);
-    gears_destroy_descriptor_sets(app);
-    gears_destroy_descriptor_set_layouts(app);
-    gears_destroy_descriptor_pool(app);
+    gears_destroy_desc_sets(app);
+    gears_destroy_desc_set_layouts(app);
+    gears_destroy_desc_pool(app);
     gears_destroy_shaders(app);
     gears_destroy_frame_buffers(app);
     gears_destroy_render_pass(app);
