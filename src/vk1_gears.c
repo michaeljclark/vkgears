@@ -1848,7 +1848,7 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
         { .color = { { 0.0f, 0.0f, 0.0f, 1.0f } } },
     };
 
-    VkRenderPassBeginInfo rp_info = {
+    VkRenderPassBeginInfo pass = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .renderPass = app->render_pass,
@@ -1877,8 +1877,8 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
     VK_CALL(vkResetCommandBuffer(app->cmd_buffers[j], 0));
     VK_CALL(vkBeginCommandBuffer(app->cmd_buffers[j], &cbuf_info));
 
-    rp_info.framebuffer = app->swapchain_buffers[j].framebuffer;
-    vkCmdBeginRenderPass(app->cmd_buffers[j], &rp_info,
+    pass.framebuffer = app->swapchain_buffers[j].framebuffer;
+    vkCmdBeginRenderPass(app->cmd_buffers[j], &pass,
         VK_SUBPASS_CONTENTS_INLINE);
     vkCmdSetViewport(app->cmd_buffers[j], 0, 1, &viewport);
     vkCmdSetScissor(app->cmd_buffers[j], 0, 1, &scissor);
