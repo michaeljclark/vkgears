@@ -1,24 +1,20 @@
 /*
  * 3-D gear wheels.  This program is in the public domain.
  *
- * Command line options:
- *    -info      print GL implementation information
- *    -exit      automatically exit after 30 seconds
- *
- *
- * Brian Paul
- *
+ * === History ===
  *
  * Marcus Geelnard:
  *   - Conversion to GLFW
  *   - Time based rendering (frame rate independent)
  *   - Slightly modified camera that should work better for stereo viewing
  *
- *
  * Camilla Löwy:
  *   - Removed FPS counter (this is not a benchmark)
  *   - Added a few comments
  *   - Enabled vsync
+ *
+ * Brian Paul
+ *   - Orignal version
  */
 
 #if defined(_MSC_VER)
@@ -34,17 +30,20 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
-/**
+static GLfloat view_dist = -40.0f;
+static GLfloat view_rotx = 20.f, view_roty = 30.f, view_rotz = 0.f;
+static GLint gear1, gear2, gear3;
+static GLfloat angle = 0.f;
+static int animation = 1;
 
-    Draw a gear wheel.  You'll probably want to call this function when
-    building a display list since we do a lot of trig here.
-
-    Input:  inner_radius - radius of hole at center
-                    outer_radius - radius at center of teeth
-                    width - width of gear teeth - number of teeth
-                    tooth_depth - depth of tooth
-
- **/
+/*
+ * Create a gear wheel.
+ *
+ *   Input:  inner_radius - radius of hole at center
+ *                  outer_radius - radius at center of teeth
+ *                  width - width of gear teeth - number of teeth
+ *                  tooth_depth - depth of tooth
+ */
 
 static void
 gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
@@ -164,13 +163,9 @@ gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 
 }
 
-
-static GLfloat view_rotx = 20.f, view_roty = 30.f, view_rotz = 0.f;
-static GLint gear1, gear2, gear3;
-static GLfloat angle = 0.f;
-static int animate_enable = 1;
-
-/* OpenGL draw function & timing */
+/*
+ * OpenGL draw
+ */
 static void draw(void)
 {
     glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -202,53 +197,9 @@ static void draw(void)
     glPopMatrix();
 }
 
-
-/* update animation parameters */
-static void animate(void)
-{
-    if (animate_enable) {
-        angle = 100.f * (float) glfwGetTime();
-    }
-}
-
-
-/* change view angle, exit upon ESC */
-void key( GLFWwindow* window, int k, int s, int action, int mods )
-{
-    if( action != GLFW_PRESS ) return;
-
-    switch (k) {
-    case GLFW_KEY_A:
-            animate_enable = !animate_enable;
-            break;
-    case GLFW_KEY_Z:
-        if( mods & GLFW_MOD_SHIFT )
-            view_rotz -= 5.0;
-        else
-            view_rotz += 5.0;
-        break;
-    case GLFW_KEY_ESCAPE:
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-        break;
-    case GLFW_KEY_UP:
-        view_rotx += 5.0;
-        break;
-    case GLFW_KEY_DOWN:
-        view_rotx -= 5.0;
-        break;
-    case GLFW_KEY_LEFT:
-        view_roty += 5.0;
-        break;
-    case GLFW_KEY_RIGHT:
-        view_roty -= 5.0;
-        break;
-    default:
-        return;
-    }
-}
-
-
-/* new window size */
+/*
+ * OpenGL reshape
+ */
 void reshape( GLFWwindow* window, int width, int height )
 {
     GLfloat h = (GLfloat) height / (GLfloat) width;
@@ -259,11 +210,22 @@ void reshape( GLFWwindow* window, int width, int height )
     glFrustum(-1.0, 1.0, -h, h, 5.0, 60.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0.0, 0.0, -40.0);
+    glTranslatef(0.0, 0.0, view_dist);
 }
 
+/*
+ * animation update
+ */
+static void animate(void)
+{
+    if (animation) {
+        angle = 100.f * (float) glfwGetTime();
+    }
+}
 
-/* program & OpenGL initialization */
+/*
+ * OpenGL initialization
+ */
 static void init(void)
 {
     static GLfloat pos[4] = {5.f, 5.f, 10.f, 0.f};
@@ -299,37 +261,58 @@ static void init(void)
     glEnable(GL_NORMALIZE);
 }
 
+/*
+ * keyboard dispatch
+ */
+void key( GLFWwindow* window, int k, int s, int action, int mods )
+{
+    if( action != GLFW_PRESS ) return;
 
-/* program entry */
+    float shiftz = (mods & GLFW_MOD_SHIFT ? -1.0 : 1.0);
+
+    switch (k) {
+    case GLFW_KEY_ESCAPE:
+    case GLFW_KEY_Q: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
+    case GLFW_KEY_X: animation = !animation; break;
+    case GLFW_KEY_Z: view_rotz += 5.0 * shiftz; break;
+    case GLFW_KEY_C: view_dist += 5.0 * shiftz; break;
+    case GLFW_KEY_W: view_rotx += 5.0; break;
+    case GLFW_KEY_S: view_rotx -= 5.0; break;
+    case GLFW_KEY_A: view_roty += 5.0; break;
+    case GLFW_KEY_D: view_roty -= 5.0; break;
+    default: return;
+    }
+}
+
+/*
+ * main program
+ */
 int main(int argc, char *argv[])
 {
     GLFWwindow* window;
     int width, height;
 
-    if( !glfwInit() )
+    if (!glfwInit())
     {
-        fprintf( stderr, "Failed to initialize GLFW\n" );
-        exit( EXIT_FAILURE );
+        fprintf(stderr, "Failed to initialize GLFW\n");
+        exit(EXIT_FAILURE);
     }
 
     glfwWindowHint(GLFW_DEPTH_BITS, 16);
-    //glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
-    window = glfwCreateWindow( 300, 300, "GL1 Gears", NULL, NULL );
+    window = glfwCreateWindow(512, 512, "GL1 Gears", NULL, NULL);
     if (!window)
     {
-        fprintf( stderr, "Failed to open GLFW window\n" );
+        fprintf(stderr, "Failed to open GLFW window\n");
         glfwTerminate();
-        exit( EXIT_FAILURE );
+        exit(EXIT_FAILURE);
     }
 
-    // Set callback functions
     glfwSetFramebufferSizeCallback(window, reshape);
     glfwSetKeyCallback(window, key);
-
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
-
     glfwGetFramebufferSize(window, &width, &height);
 
     init();
@@ -343,7 +326,6 @@ int main(int argc, char *argv[])
     }
     glfwTerminate();
 
-    // Exit program
-    exit( EXIT_SUCCESS );
+    exit(EXIT_SUCCESS);
 }
 

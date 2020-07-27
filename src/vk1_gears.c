@@ -5,24 +5,23 @@
  *    -info      print GL implementation information
  *    -exit      automatically exit after 30 seconds
  *
- *
- * Brian Paul
- *
+ * === History ===
  *
  * Michael Clark
- *   - Conversion from fixed function to Vulkan
- *
+ *   - Conversion from fixed function OpenGL to Vulkan
  *
  * Marcus Geelnard:
  *   - Conversion to GLFW
  *   - Time based rendering (frame rate independent)
  *   - Slightly modified camera that should work better for stereo viewing
  *
- *
  * Camilla Löwy:
  *   - Removed FPS counter (this is not a benchmark)
  *   - Added a few comments
  *   - Enabled vsync
+ *
+ * Brian Paul
+ *   - Orignal version
  */
 
 #undef NDEBUG
@@ -1651,10 +1650,20 @@ static void gears_create_pipeline(gears_app *app)
 
 static inline void normalize2f(float v[2])
 {
+    // vec2 r; vec2_norm(r, v); v = r;
     float len = sqrtf(v[0]*v[0] + v[1]*v[1]);
     v[0] /= len;
     v[1] /= len;
 }
+
+/*
+ * Create a gear wheel.
+ *
+ *   Input:  inner_radius - radius of hole at center
+ *                  outer_radius - radius at center of teeth
+ *                  width - width of gear teeth - number of teeth
+ *                  tooth_depth - depth of tooth
+ */
 
 #define mglVertex3f(x,y,z) \
     gears_vertex_buffer_add(vb, (gears_vertex){{x,y,z}, norm, uv, col })
