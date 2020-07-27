@@ -81,23 +81,15 @@ typedef struct gears_image_buffer
     VkFormat format;
 } gears_image_buffer;
 
-typedef struct gears_vertex_buffer
+typedef struct gears_buffer
 {
+    size_t size;
     size_t total;
     size_t count;
-    gears_vertex *vertices;
+    void *data;
     VkDeviceMemory memory;
     VkBuffer buffer;
-} gears_vertex_buffer;
-
-typedef struct gears_index_buffer
-{
-    size_t total;
-    size_t count;
-    uint32_t *indices;
-    VkDeviceMemory memory;
-    VkBuffer buffer;
-} gears_index_buffer;
+} gears_buffer;
 
 typedef struct gears_view_rotation
 {
@@ -129,8 +121,8 @@ typedef struct gears_uniform_buffer
 
 typedef struct gears_app_gear
 {
-    gears_vertex_buffer vb;
-    gears_index_buffer ib;
+    gears_buffer vb;
+    gears_buffer ib;
     gears_uniform_buffer ub;
 } gears_app_gear;
 
@@ -189,24 +181,21 @@ typedef enum {
     gears_topology_quad_strip,
 } gears_primitive_type;
 
-static void gears_vertex_buffer_init(gears_vertex_buffer *vb);
-static void gears_vertex_buffer_freeze(gears_app *app, gears_vertex_buffer *vb);
-static void gears_vertex_buffer_destroy(gears_app *app, gears_vertex_buffer *vb);
-static void* gears_vertex_buffer_data(gears_vertex_buffer *vb);
-static size_t gears_vertex_buffer_size(gears_vertex_buffer *vb);
-static uint32_t gears_vertex_buffer_count(gears_vertex_buffer *vb);
-static uint32_t gears_vertex_buffer_add(gears_vertex_buffer *vb,
-    gears_vertex vertex);
+enum {
+    GEARS_VERTEX_INITIAL_COUNT = 16,
+    GEARS_INDEX_INITIAL_COUNT = 64
+};
 
-static void gears_index_buffer_init(gears_index_buffer *ib);
-static void gears_index_buffer_freeze(gears_app *app, gears_index_buffer *ib);
-static void gears_index_buffer_destroy(gears_app *app, gears_index_buffer *ib);
-static void* gears_index_buffer_data(gears_index_buffer *ib);
-static size_t gears_index_buffer_size(gears_index_buffer *ib);
-static uint32_t gears_index_buffer_count(gears_index_buffer *ib);
-static void gears_index_buffer_add(gears_index_buffer *ib,
+static void gears_buffer_init(gears_buffer *buffer, size_t size, size_t count);
+static void gears_buffer_freeze(gears_app *app, gears_buffer *buffer);
+static void gears_buffer_destroy(gears_app *app, gears_buffer *buffer);
+static void* gears_buffer_data(gears_buffer *vb);
+static size_t gears_buffer_size(gears_buffer *vb);
+static uint32_t gears_buffer_count(gears_buffer *vb);
+static uint32_t gears_buffer_add_vertex(gears_buffer *vb, gears_vertex vertex);
+static void gears_buffer_add_indices(gears_buffer *vb,
     const uint32_t *indices, uint32_t count, uint32_t addend);
-static void gears_index_buffer_add_primitves(gears_index_buffer *ib,
+static void gears_buffer_add_indices_primitves(gears_buffer *vb,
     gears_primitive_type type, uint count, uint addend);
 
 void panic(const char *fmt, ...)
@@ -270,134 +259,69 @@ static void gears_buffer_alloc(gears_app *app, VkBuffer *buffer,
     VK_CALL(vkBindBufferMemory(app->device, *buffer, *memory, 0));
 }
 
-enum { GEARS_VERTEX_BUFFER_INITIAL_COUNT = 16 };
-
-static void gears_vertex_buffer_init(gears_vertex_buffer *vb)
+static void gears_buffer_init(gears_buffer *vb, size_t size, size_t count)
 {
-    vb->total = GEARS_VERTEX_BUFFER_INITIAL_COUNT;
+    vb->size = size;
+    vb->total = count;
     vb->count = 0;
-    vb->vertices = malloc(sizeof(gears_vertex) * vb->total);
+    vb->data = malloc(vb->size * vb->total);
     vb->memory = VK_NULL_HANDLE;
     vb->buffer = VK_NULL_HANDLE;
 }
 
-static void gears_vertex_buffer_freeze(gears_app *app, gears_vertex_buffer *vb)
+static void gears_buffer_freeze(gears_app *app, gears_buffer *vb)
 {
-    size_t buffer_size = gears_vertex_buffer_size(vb);
-    uint32_t memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
+    void* data;
+    size_t buffer_size = gears_buffer_size(vb);
     gears_buffer_alloc(app, &vb->buffer, &vb->memory, buffer_size,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-
-    void* data;
     VK_CALL(vkMapMemory(app->device, vb->memory, 0, buffer_size, 0, &data));
-    memcpy(data, vb->vertices, buffer_size);
+    memcpy(data, vb->data, buffer_size);
     vkUnmapMemory(app->device, vb->memory);
 }
 
-static void gears_vertex_buffer_destroy(gears_app *app, gears_vertex_buffer *vb)
+static void gears_buffer_destroy(gears_app *app, gears_buffer *vb)
 {
-    free(vb->vertices);
-    vb->vertices = NULL;
+    free(vb->data);
+    vb->data = NULL;
     vkDestroyBuffer(app->device, vb->buffer, NULL);
     vb->buffer = VK_NULL_HANDLE;
     vkFreeMemory(app->device, vb->memory, NULL);
     vb->memory = VK_NULL_HANDLE;
 }
 
-static uint32_t gears_vertex_buffer_count(gears_vertex_buffer *vb)
-{
-    return vb->count;
-}
+static uint32_t gears_buffer_count(gears_buffer *vb) { return vb->count; }
+static void* gears_buffer_data(gears_buffer *vb) { return vb->data; }
+static size_t gears_buffer_size(gears_buffer *vb) { return vb->count*vb->size; }
 
-static void* gears_vertex_buffer_data(gears_vertex_buffer *vb)
-{
-    return vb->vertices;
-}
-
-static size_t gears_vertex_buffer_size(gears_vertex_buffer *vb)
-{
-    return vb->count * sizeof(gears_vertex);
-}
-
-static uint32_t gears_vertex_buffer_add(gears_vertex_buffer *vb,
+static uint32_t gears_buffer_add_vertex(gears_buffer *vb,
     gears_vertex vertex)
 {
     if (vb->count >= vb->total) {
         vb->total <<= 1;
-        vb->vertices = realloc(vb->vertices,
-            sizeof(gears_vertex) * vb->total);
+        vb->data = realloc(vb->data,
+            vb->size * vb->total);
     }
     uint32_t idx = vb->count++;
-    vb->vertices[idx] = vertex;
+    ((gears_vertex*)vb->data)[idx] = vertex;
     return idx;
 }
 
-enum { GEARS_INDEX_BUFFER_INITIAL_COUNT = 64 };
-
-static void gears_index_buffer_init(gears_index_buffer *ib)
-{
-    ib->total = GEARS_INDEX_BUFFER_INITIAL_COUNT;
-    ib->count = 0;
-    ib->indices = malloc(sizeof(uint32_t) * ib->total);
-    ib->memory = VK_NULL_HANDLE;
-    ib->buffer = VK_NULL_HANDLE;
-}
-
-static void gears_index_buffer_freeze(gears_app *app, gears_index_buffer *ib)
-{
-    size_t buffer_size = gears_index_buffer_size(ib);
-
-    gears_buffer_alloc(app, &ib->buffer, &ib->memory, buffer_size,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-
-    void* data;
-    VK_CALL(vkMapMemory(app->device, ib->memory, 0, buffer_size, 0, &data));
-    memcpy(data, ib->indices, buffer_size);
-    vkUnmapMemory(app->device, ib->memory);
-}
-
-static void gears_index_buffer_destroy(gears_app *app, gears_index_buffer *ib)
-{
-    free(ib->indices);
-    ib->indices = NULL;
-    vkDestroyBuffer(app->device, ib->buffer, NULL);
-    ib->buffer = VK_NULL_HANDLE;
-    vkFreeMemory(app->device, ib->memory, NULL);
-    ib->memory = VK_NULL_HANDLE;
-}
-
-static uint32_t gears_index_buffer_count(gears_index_buffer *ib)
-{
-    return ib->count;
-}
-
-static void* gears_index_buffer_data(gears_index_buffer *ib)
-{
-    return ib->indices;
-}
-
-static size_t gears_index_buffer_size(gears_index_buffer *ib)
-{
-    return ib->count * sizeof(uint32_t);
-}
-
-static void gears_index_buffer_add(gears_index_buffer *ib,
+static void gears_buffer_add_indices(gears_buffer *vb,
     const uint32_t *indices, uint32_t count, uint32_t addend)
 {
-    if (ib->count + count >= ib->total) {
-        do { ib->total <<= 1; }
-        while (ib->count + count > ib->total);
-        ib->indices = realloc(ib->indices,
-            sizeof(uint32_t) * ib->total);
+    if (vb->count + count >= vb->total) {
+        do { vb->total <<= 1; }
+        while (vb->count + count > vb->total);
+        vb->data = realloc(vb->data,
+            vb->size * vb->total);
     }
     for (uint32_t i = 0; i < count; i++) {
-        ib->indices[ib->count++] = indices[i] + addend;
+        ((uint32_t*)vb->data)[vb->count++] = indices[i] + addend;
     }
 }
 
-static void gears_index_buffer_add_primitves(gears_index_buffer *ib,
+static void gears_buffer_add_indices_primitves(gears_buffer *vb,
     gears_primitive_type type, uint count, uint addend)
 {
     static const uint tri[] = {0,1,2};
@@ -407,26 +331,26 @@ static void gears_index_buffer_add_primitves(gears_index_buffer *ib,
     switch (type) {
     case gears_topology_triangles:
         for (size_t i = 0; i < count; i++) {
-            gears_index_buffer_add(ib, tri, 3, addend);
+            gears_buffer_add_indices(vb, tri, 3, addend);
             addend += 3;
         }
         break;
     case gears_topology_triangle_strip:
         assert((count&1) == 0);
         for (size_t i = 0; i < count; i += 2) {
-            gears_index_buffer_add(ib, tri_strip, 6, addend);
+            gears_buffer_add_indices(vb, tri_strip, 6, addend);
             addend += 2;
         }
         break;
     case gears_topology_quads:
         for (size_t i = 0; i < count; i++) {
-            gears_index_buffer_add(ib, quads, 6, addend);
+            gears_buffer_add_indices(vb, quads, 6, addend);
             addend += 4;
         }
         break;
     case gears_topology_quad_strip:
         for (size_t i = 0; i < count; i++) {
-            gears_index_buffer_add(ib, tri_strip, 6, addend);
+            gears_buffer_add_indices(vb, tri_strip, 6, addend);
             addend += 2;
         }
         break;
@@ -1666,11 +1590,11 @@ static inline void normalize2f(float v[2])
  */
 
 #define mglVertex3f(x,y,z) \
-    gears_vertex_buffer_add(vb, (gears_vertex){{x,y,z}, norm, uv, col })
+    gears_buffer_add_vertex(vb, (gears_vertex){{x,y,z}, norm, uv, col })
 #define mglNormal3f(x,y,z) norm = (vec3f){x,y,z}
 
 static void
-gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
+gear(gears_buffer *vb, gears_buffer *ib,
         float inner_radius, float outer_radius, float width,
         int teeth, float tooth_depth, vec4f col)
 {
@@ -1692,7 +1616,7 @@ gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
     mglNormal3f(0.f, 0.f, 1.f);
 
     /* draw front face */
-    idx = gears_vertex_buffer_count(vb);
+    idx = gears_buffer_count(vb);
     for (i = 0; i <= teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
         mglVertex3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
@@ -1702,11 +1626,11 @@ gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
             mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
         }
     }
-    gears_index_buffer_add_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
+    gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
 
     /* draw front sides of teeth */
     da = 2.f*(float) M_PI / teeth / 4.f;
-    idx = gears_vertex_buffer_count(vb);
+    idx = gears_buffer_count(vb);
     for (i = 0; i < teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
         mglVertex3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
@@ -1714,12 +1638,12 @@ gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
         mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
         mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
     }
-    gears_index_buffer_add_primitves(ib, gears_topology_quads, teeth, idx);
+    gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth, idx);
 
     mglNormal3f(0.0, 0.0, -1.0);
 
     /* draw back face */
-    idx = gears_vertex_buffer_count(vb);
+    idx = gears_buffer_count(vb);
     for (i = 0; i <= teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
         mglVertex3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
@@ -1729,11 +1653,11 @@ gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
             mglVertex3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
         }
     }
-    gears_index_buffer_add_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
+    gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
 
     /* draw back sides of teeth */
     da = 2.f*(float) M_PI / teeth / 4.f;
-    idx = gears_vertex_buffer_count(vb);
+    idx = gears_buffer_count(vb);
     for (i = 0; i < teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
         mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
@@ -1741,10 +1665,10 @@ gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
         mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
         mglVertex3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
     }
-    gears_index_buffer_add_primitves(ib, gears_topology_quads, teeth, idx);
+    gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth, idx);
 
     /* draw outward faces of teeth */
-    idx = gears_vertex_buffer_count(vb);
+    idx = gears_buffer_count(vb);
     for (i = 0; i < teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
         tmp[0] = r2*cosf(angle+1*da) - r1*cosf(angle);
@@ -1774,24 +1698,24 @@ gear(gears_vertex_buffer *vb, gears_index_buffer *ib,
         mglVertex3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), -width*0.5f);
         mglVertex3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), width*0.5f);
     }
-    gears_index_buffer_add_primitves(ib, gears_topology_quads, teeth*4, idx);
+    gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth*4, idx);
 
     /* draw inside radius cylinder */
-    idx = gears_vertex_buffer_count(vb);
+    idx = gears_buffer_count(vb);
     for (i = 0; i <= teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
         mglNormal3f(-cosf(angle), -sinf(angle), 0.f);
         mglVertex3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
         mglVertex3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
     }
-    gears_index_buffer_add_primitves(ib, gears_topology_quad_strip, teeth, idx);
+    gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth, idx);
 }
 
 static void gears_destroy_vertex_buffers(gears_app *app)
 {
     for (size_t g = 0; g < 3; g++) {
-        gears_vertex_buffer_destroy(app, &app->gear[g].vb);
-        gears_index_buffer_destroy(app, &app->gear[g].ib);
+        gears_buffer_destroy(app, &app->gear[g].vb);
+        gears_buffer_destroy(app, &app->gear[g].ib);
     }
 }
 
@@ -1802,8 +1726,10 @@ static void gears_create_vertex_buffers(gears_app *app)
     static const vec4f blue = {0.2f, 0.2f, 1.f, 1.f};
 
     for (size_t g = 0; g < 3; g++) {
-        gears_vertex_buffer_init(&app->gear[g].vb);
-        gears_index_buffer_init(&app->gear[g].ib);
+        gears_buffer_init(&app->gear[g].vb, sizeof(gears_vertex),
+            GEARS_VERTEX_INITIAL_COUNT);
+        gears_buffer_init(&app->gear[g].ib, sizeof(uint32_t),
+            GEARS_INDEX_INITIAL_COUNT);
     }
 
     gear(&app->gear[0].vb, &app->gear[0].ib, 1.f, 4.f, 1.f, 20, 0.7f, red);
@@ -1811,8 +1737,8 @@ static void gears_create_vertex_buffers(gears_app *app)
     gear(&app->gear[2].vb, &app->gear[2].ib, 1.3f, 2.f, 0.5f, 10, 0.7f, blue);
 
     for (size_t g = 0; g < 3; g++) {
-        gears_vertex_buffer_freeze(app, &app->gear[g].vb);
-        gears_index_buffer_freeze(app, &app->gear[g].ib);
+        gears_buffer_freeze(app, &app->gear[g].vb);
+        gears_buffer_freeze(app, &app->gear[g].ib);
     }
 }
 
