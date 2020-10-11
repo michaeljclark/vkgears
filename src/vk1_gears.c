@@ -150,8 +150,8 @@ typedef struct gears_app
     gears_image_buffer depth_buffer;
     VkCommandPool cmd_pool;
     VkCommandBuffer *cmd_buffers;
-    VkSemaphore image_available;
-    VkSemaphore render_finished;
+    VkSemaphore *image_available_semaphores;
+    VkSemaphore *render_complete_semaphores;
     VkFence *swapchain_fences;
     VkRenderPass render_pass;
     VkShaderModule frag_shader;
@@ -1052,8 +1052,15 @@ static void gears_create_command_buffers(gears_app *app)
 
 static void gears_destroy_semaphores(gears_app *app)
 {
-    vkDestroySemaphore(app->device, app->image_available, NULL);
-    vkDestroySemaphore(app->device, app->render_finished, NULL);
+    for (uint32_t i = 0; i < app->swapchain_image_count; i++)
+    {
+        vkDestroySemaphore(app->device, app->image_available_semaphores[i], NULL);
+        vkDestroySemaphore(app->device, app->render_complete_semaphores[i], NULL);
+    }
+    free(app->image_available_semaphores);
+    free(app->render_complete_semaphores);
+    app->image_available_semaphores = NULL;
+    app->render_complete_semaphores = NULL;
 }
 
 static void gears_create_semaphores(gears_app *app)
@@ -1063,8 +1070,15 @@ static void gears_create_semaphores(gears_app *app)
         .pNext = NULL,
         .flags = 0
     };
-    VK_CALL(vkCreateSemaphore(app->device, &sci, NULL, &app->image_available));
-    VK_CALL(vkCreateSemaphore(app->device, &sci, NULL, &app->render_finished));
+    app->image_available_semaphores = malloc(sizeof(VkSemaphore) * app->swapchain_image_count);
+    app->render_complete_semaphores = malloc(sizeof(VkSemaphore) * app->swapchain_image_count);
+    assert(app->image_available_semaphores != NULL);
+    assert(app->render_complete_semaphores != NULL);
+    for (uint32_t i = 0; i < app->swapchain_image_count; i++)
+    {
+        VK_CALL(vkCreateSemaphore(app->device, &sci, NULL, &app->image_available_semaphores[i]));
+        VK_CALL(vkCreateSemaphore(app->device, &sci, NULL, &app->render_complete_semaphores[i]));
+    }
 }
 
 static void gears_destroy_fences(gears_app *app)
@@ -1984,15 +1998,17 @@ static void gears_print_info_verbose(gears_app *app)
 
 static void gears_run(gears_app *app)
 {
+    VkResult err;
+
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = NULL,
         .pWaitDstStageMask = &wait_stage,
-        .pWaitSemaphores = &app->image_available,
+        .pWaitSemaphores = NULL,
         .waitSemaphoreCount = 1,
-        .pSignalSemaphores = &app->render_finished,
+        .pSignalSemaphores = NULL,
         .signalSemaphoreCount = 1,
         .commandBufferCount = 1,
     };
@@ -2001,7 +2017,7 @@ static void gears_run(gears_app *app)
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = NULL,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &app->render_finished,
+        .pWaitSemaphores = NULL,
         .swapchainCount = 1,
         .pSwapchains = &app->swapchain,
         .pImageIndices = NULL,
@@ -2012,17 +2028,15 @@ static void gears_run(gears_app *app)
         gears_print_info_verbose(app);
     }
 
+    int j = 0, k;
     while (!glfwWindowShouldClose(app->window)) {
         glfwPollEvents();
 
-        int j;
-        VkResult err;
+        k = j;
         VK_CALL(vkAcquireNextImageKHR(app->device,
-            app->swapchain, UINT64_MAX, app->image_available, NULL, &j));
-        VK_CALL(vkWaitForFences(app->device, 1,
-            &app->swapchain_fences[j], VK_TRUE, UINT64_MAX));
-        VK_CALL(vkResetFences(app->device, 1,
-            &app->swapchain_fences[j]));
+            app->swapchain, UINT64_MAX,
+            app->image_available_semaphores[k],
+            app->swapchain_fences[j], &j));
 
         if (app->animation_enable) {
             app->rotation.angle = 100.f * (float) glfwGetTime();
@@ -2031,10 +2045,15 @@ static void gears_run(gears_app *app)
         gears_record_command_buffers(app, j);
 
         submit_info.pCommandBuffers = &app->cmd_buffers[j];
+        submit_info.pWaitSemaphores = &app->image_available_semaphores[k];
+        submit_info.pSignalSemaphores = &app->render_complete_semaphores[j];
+        VK_CALL(vkResetFences(app->device, 1,
+            &app->swapchain_fences[j]));
         VK_CALL(vkQueueSubmit(app->queue, 1, &submit_info,
             app->swapchain_fences[j]));
 
         present_info.pImageIndices = &j;
+        present_info.pWaitSemaphores = &app->render_complete_semaphores[j];
         err = vkQueuePresentKHR(app->queue, &present_info);
         if (err == VK_ERROR_OUT_OF_DATE_KHR) {
             glfwGetFramebufferSize(app->window, &app->width, &app->height);
@@ -2043,6 +2062,8 @@ static void gears_run(gears_app *app)
         else if (err != VK_SUCCESS && err != VK_SUBOPTIMAL_KHR) {
             panic("vkQueuePresentKHR failed: err=%d\n", err);
         }
+        VK_CALL(vkWaitForFences(app->device, 1,
+            &app->swapchain_fences[j], VK_TRUE, UINT64_MAX));
     }
 }
 
