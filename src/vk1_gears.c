@@ -188,7 +188,7 @@ enum {
 };
 
 static void gears_buffer_init(gears_buffer *buffer, size_t size, size_t count);
-static void gears_buffer_freeze(gears_app *app, gears_buffer *buffer);
+static void gears_buffer_freeze(gears_app *app, gears_buffer *buffer, int usage);
 static void gears_buffer_destroy(gears_app *app, gears_buffer *buffer);
 static void* gears_buffer_data(gears_buffer *vb);
 static size_t gears_buffer_size(gears_buffer *vb);
@@ -270,12 +270,11 @@ static void gears_buffer_init(gears_buffer *vb, size_t size, size_t count)
     vb->buffer = VK_NULL_HANDLE;
 }
 
-static void gears_buffer_freeze(gears_app *app, gears_buffer *vb)
+static void gears_buffer_freeze(gears_app *app, gears_buffer *vb, int usage)
 {
     void* data;
     size_t buffer_size = gears_buffer_size(vb);
-    gears_buffer_alloc(app, &vb->buffer, &vb->memory, buffer_size,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    gears_buffer_alloc(app, &vb->buffer, &vb->memory, buffer_size, usage);
     VK_CALL(vkMapMemory(app->device, vb->memory, 0, buffer_size, 0, &data));
     memcpy(data, vb->data, buffer_size);
     vkUnmapMemory(app->device, vb->memory);
@@ -1724,8 +1723,8 @@ static void gears_create_vertex_buffers(gears_app *app)
     gear(&app->gear[2].vb, &app->gear[2].ib, 1.3f, 2.f, 0.5f, 10, 0.7f, blue);
 
     for (size_t g = 0; g < 3; g++) {
-        gears_buffer_freeze(app, &app->gear[g].vb);
-        gears_buffer_freeze(app, &app->gear[g].ib);
+        gears_buffer_freeze(app, &app->gear[g].vb, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        gears_buffer_freeze(app, &app->gear[g].ib, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     }
 }
 
