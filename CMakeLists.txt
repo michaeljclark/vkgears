@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.16)
 
 project(vkgears VERSION 0.0.1)
 
-set (VULKAN_SDK "/opt/vulkan/1.2.131.2/x86_64")
+set (VULKAN_SDK "/opt/vulkan/1.2.154.0/x86_64")
 find_program (GLSL_LANG_VALIDATOR NAMES glslangValidator PATHS ${VULKAN_SDK}/bin)
 set (SHADER_DIR shaders)
 
