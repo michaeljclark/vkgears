@@ -602,7 +602,7 @@ static void gears_create_instance(gears_app *app)
         .applicationVersion = 0,
         .pEngineName = app->name,
         .engineVersion = 0,
-        .apiVersion = VK_API_VERSION_1_0,
+        .apiVersion = VK_API_VERSION_1_1,
     };
     const VkInstanceCreateInfo ici = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
