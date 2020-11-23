@@ -163,6 +163,7 @@ typedef struct gears_app
     VkPipelineLayout pipeline_layout;
     VkPipelineCache pipeline_cache;
     VkPipeline pipeline;
+    float view_dist;
     gears_view_rotation rotation;
     gears_app_gear gear[3];
     uint32_t max_swapchain_images;
@@ -362,40 +363,25 @@ static void gears_glfw_error(int error_code, const char* error_desc)
     fprintf(stderr, "glfw_error: code=%d desc=%s\n", error_code, error_desc);
 }
 
-static void gears_glfw_key(GLFWwindow* window, int key, int scancode,
-                           int action, int mods)
+static void gears_glfw_key( GLFWwindow* window, int k, int s, int action, int mods )
 {
     gears_app *app = (gears_app*)glfwGetWindowUserPointer(window);
 
     if( action != GLFW_PRESS ) return;
 
-    switch (key) {
-    case GLFW_KEY_A:
-        app->animation_enable = !app->animation_enable;
-        break;
-    case GLFW_KEY_Z:
-        if( mods & GLFW_MOD_SHIFT )
-            app->rotation.rotz -= 5.0;
-        else
-            app->rotation.rotz += 5.0;
-        break;
+    float shiftz = (mods & GLFW_MOD_SHIFT ? -1.0 : 1.0);
+
+    switch (k) {
     case GLFW_KEY_ESCAPE:
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-        break;
-    case GLFW_KEY_UP:
-        app->rotation.rotx += 5.0;
-        break;
-    case GLFW_KEY_DOWN:
-        app->rotation.rotx -= 5.0;
-        break;
-    case GLFW_KEY_LEFT:
-        app->rotation.roty += 5.0;
-        break;
-    case GLFW_KEY_RIGHT:
-        app->rotation.roty -= 5.0;
-        break;
-    default:
-        return;
+    case GLFW_KEY_Q: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
+    case GLFW_KEY_X: app->animation_enable = !app->animation_enable; break;
+    case GLFW_KEY_Z: app->rotation.rotz += 5.0 * shiftz; break;
+    case GLFW_KEY_C: app->view_dist += 5.0 * shiftz; break;
+    case GLFW_KEY_W: app->rotation.rotx += 5.0; break;
+    case GLFW_KEY_S: app->rotation.rotx -= 5.0; break;
+    case GLFW_KEY_A: app->rotation.roty += 5.0; break;
+    case GLFW_KEY_D: app->rotation.roty -= 5.0; break;
+    default: return;
     }
 }
 
@@ -407,6 +393,7 @@ static void gears_init_app(gears_app *app, const char *app_name,
     app->width = app_width_default;
     app->height = app_height_default;
 
+    app->view_dist = -40.0;
     app->rotation.rotx = 20.f;
     app->rotation.roty = 30.f;
     app->rotation.rotz = 0.f;
@@ -1765,7 +1752,7 @@ static void gears_update_uniform_buffer(gears_app *app, size_t j)
     mat4x4_frustum(p, -1.0, 1.0, -h, h, 5.0, 60.0);
 
     /* create gear model and view matrices */
-    mat4x4_translate(v, 0.0, 0.0, -40.0);
+    mat4x4_translate(v, 0.0, 0.0, app->view_dist);
     mat4x4_rotate(v, v, 1.0, 0.0, 0.0, (app->rotation.rotx / 180) * M_PI);
     mat4x4_rotate(v, v, 0.0, 1.0, 0.0, (app->rotation.roty / 180) * M_PI);
     mat4x4_rotate(v, v, 0.0, 0.0, 1.0, (app->rotation.rotz / 180) * M_PI);
