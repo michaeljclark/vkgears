@@ -1576,9 +1576,9 @@ static inline void normalize2f(float v[2])
  *                  tooth_depth - depth of tooth
  */
 
-#define mglVertex3f(x,y,z) \
+#define vertex_3f(x,y,z) \
     gears_buffer_add_vertex(vb, (gears_vertex){{x,y,z}, norm, uv, col })
-#define mglNormal3f(x,y,z) norm = (vec3f){x,y,z}
+#define normal_3f(x,y,z) norm = (vec3f){x,y,z}
 
 static void
 gear(gears_buffer *vb, gears_buffer *ib,
@@ -1600,17 +1600,17 @@ gear(gears_buffer *vb, gears_buffer *ib,
     da = 2.f*(float) M_PI / teeth / 4.f;
     uv = (vec2f){ 0,0 };
 
-    mglNormal3f(0.f, 0.f, 1.f);
+    normal_3f(0.f, 0.f, 1.f);
 
     /* draw front face */
     idx = gears_buffer_count(vb);
     for (i = 0; i <= teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
-        mglVertex3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
-        mglVertex3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
+        vertex_3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
+        vertex_3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
         if (i < teeth) {
-            mglVertex3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
-            mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
+            vertex_3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
+            vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
         }
     }
     gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
@@ -1620,24 +1620,24 @@ gear(gears_buffer *vb, gears_buffer *ib,
     idx = gears_buffer_count(vb);
     for (i = 0; i < teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
-        mglVertex3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
-        mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), width*0.5f);
-        mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
-        mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
+        vertex_3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
+        vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), width*0.5f);
+        vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
+        vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
     }
     gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth, idx);
 
-    mglNormal3f(0.0, 0.0, -1.0);
+    normal_3f(0.0, 0.0, -1.0);
 
     /* draw back face */
     idx = gears_buffer_count(vb);
     for (i = 0; i <= teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
-        mglVertex3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
-        mglVertex3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
+        vertex_3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
+        vertex_3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
         if (i < teeth) {
-            mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
-            mglVertex3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
+            vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
+            vertex_3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
         }
     }
     gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
@@ -1647,10 +1647,10 @@ gear(gears_buffer *vb, gears_buffer *ib,
     idx = gears_buffer_count(vb);
     for (i = 0; i < teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
-        mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
-        mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), -width*0.5f);
-        mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
-        mglVertex3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
+        vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
+        vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), -width*0.5f);
+        vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
+        vertex_3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
     }
     gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth, idx);
 
@@ -1661,29 +1661,29 @@ gear(gears_buffer *vb, gears_buffer *ib,
         tmp[0] = r2*cosf(angle+1*da) - r1*cosf(angle);
         tmp[1] = r2*sinf(angle+1*da) - r1*sinf(angle);
         normalize2f(tmp);
-        mglNormal3f(tmp[1], -tmp[0], 0.f);
-        mglVertex3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
-        mglVertex3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
-        mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
-        mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), width*0.5f);
-        mglNormal3f(cosf(angle), sinf(angle), 0.f);
-        mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), width*0.5f);
-        mglVertex3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
-        mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), -width*0.5f);
-        mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
+        normal_3f(tmp[1], -tmp[0], 0.f);
+        vertex_3f(r1*cosf(angle), r1*sinf(angle), width*0.5f);
+        vertex_3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
+        vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
+        vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), width*0.5f);
+        normal_3f(cosf(angle), sinf(angle), 0.f);
+        vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), width*0.5f);
+        vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
+        vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), -width*0.5f);
+        vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
         tmp[0] = r1*cosf(angle+3*da) - r2*cosf(angle+2*da);
         tmp[1] = r1*sinf(angle+3*da) - r2*sinf(angle+2*da);
         normalize2f(tmp);
-        mglNormal3f(tmp[1], -tmp[0], 0.f);
-        mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
-        mglVertex3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), -width*0.5f);
-        mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
-        mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
-        mglNormal3f(cosf(angle), sinf(angle), 0.f);
-        mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
-        mglVertex3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
-        mglVertex3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), -width*0.5f);
-        mglVertex3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), width*0.5f);
+        normal_3f(tmp[1], -tmp[0], 0.f);
+        vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
+        vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), -width*0.5f);
+        vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
+        vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
+        normal_3f(cosf(angle), sinf(angle), 0.f);
+        vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
+        vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), -width*0.5f);
+        vertex_3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), -width*0.5f);
+        vertex_3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), width*0.5f);
     }
     gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth*4, idx);
 
@@ -1691,9 +1691,9 @@ gear(gears_buffer *vb, gears_buffer *ib,
     idx = gears_buffer_count(vb);
     for (i = 0; i <= teeth; i++) {
         angle = i*2.f*(float) M_PI / teeth;
-        mglNormal3f(-cosf(angle), -sinf(angle), 0.f);
-        mglVertex3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
-        mglVertex3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
+        normal_3f(-cosf(angle), -sinf(angle), 0.f);
+        vertex_3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
+        vertex_3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
     }
     gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth, idx);
 }
