@@ -9,6 +9,20 @@ during driver bring up, making it a useful test program. There is more
 complexity than the Vulkan triangle demo due to the use of vertex buffers
 and uniform buffers. It is a good, simple, complete and stand-alone example.
 
+## Project Structure
+
+- `src/gl1_gears.c` - original GLFW port of the public domain gears demo.
+- `src/gl2_gears.c` - OpenGL 2.x port of the public domain gears demo.
+- `src/gl3_gears.c` - OpenGL 3.x port of the public domain gears demo.
+- `src/gl4_gears.c` - OpenGL 4.x port of the public domain gears demo.
+- `src/vk1_gears.c` - Vulkan 1.x port of the public domain gears demo.
+- `src/linmath.h` - public domain linear algebra header functions.
+- `src/gl2_util.h` - header functions for OpenGL ES2 buffers and shaders.
+
+## Examples
+
+The project includes several versions of gears ported to multiple APIs.
+
 ### gl1_gears
 
 _gl1_gears_ is the OpenGL 1.0 port of gears using immediate mode
@@ -17,11 +31,20 @@ code is derived from the gears port included with GLFW.
 
 ### gl2_gears
 
-_gl2_gears_ is the OpenGL 2.0 port of gears using GLSL shaders.
+_gl2_gears_ is the OpenGL 2.x port of gears using GLSL shaders.
 It has been ported to use Wolfgang Draxinger's `"linmath.h"` `mat4x4`
 for constructing the model, view and projection matrices. `"gl2_util.h"`
 contains shader loading and a simple vertex and index buffer implementation.
-The code uses vertex array objects and vertex buffer objects.
+
+### gl3_gears
+
+_gl3_gears_ is mostly the same as _gl2_gears_ with the addition of vertex
+array objects which were added in OpenGL 3.x.
+
+### gl4_gears
+
+_gl4_gears_ is mostly the same as _gl3_gears_ with the addition of uniform
+buffer objects and SPIR-V binary shaders which were added in OpenGL 4.x.
 
 ### vk1_gears
 

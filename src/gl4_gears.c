@@ -45,8 +45,13 @@
 #include "linmath.h"
 #include "gl2_util.h"
 
-static const char* frag_shader_filename = "shaders/gears.fsh";
-static const char* vert_shader_filename = "shaders/gears.vsh";
+static const char* frag_shader_spir_filename = "shaders/gears.frag.spv";
+static const char* vert_shader_spir_filename = "shaders/gears.vert.spv";
+static const char* frag_shader_glsl_filename = "shaders/gears.frag";
+static const char* vert_shader_glsl_filename = "shaders/gears.vert";
+
+static int use_spir = 0;
+static int help = 0;
 
 static GLfloat view_dist = -40.0f;
 static GLfloat view_rotx = 20.f, view_roty = 30.f, view_rotz = 0.f;
@@ -54,10 +59,19 @@ static GLfloat angle = 0.f;
 static int animation = 1;
 
 static GLuint program;
-static GLuint vbo[3], ibo[3];
+static GLuint ubo[3], vao[3], vbo[3], ibo[3];
 static vertex_buffer vb[3];
 static index_buffer ib[3];
 static mat4x4 gm[3], m, v, p, mvp;
+
+typedef struct UBO_t {
+    mat4x4 projection;
+    mat4x4 model;
+    mat4x4 view;
+    vec4 lightpos;
+} UBO_t;
+
+static struct UBO_t UBO[3];
 
 /*
  * Create a gear wheel.
@@ -255,18 +269,25 @@ static void draw(void)
     mat4x4_translate(m, -3.1f, 4.2f, 0.f);
     mat4x4_rotate_Z(gm[2], m, ((-2.f * angle - 25.f) / 180) * M_PI);
 
+    for(size_t i = 0; i < 3; i++) {
+        memcpy(UBO[i].model, &gm[i], sizeof(gm[i]));
+        memcpy(UBO[i].view, v, sizeof(v));
+    }
+
+    for(size_t i = 0; i < 3; i++) {
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo[i]);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(UBO[i]), &UBO[i]);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    uniform_matrix_4fv("u_view", (const GLfloat *)v);
     for(size_t i = 0; i < 3; i++) {
-        uniform_matrix_4fv("u_model", (const GLfloat *)gm[i]);
+        glBindVertexArray(vao[i]);
         glBindBuffer(GL_ARRAY_BUFFER, vbo[i]);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo[i]);
-        vertex_array_pointer("a_pos", 3, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,pos));
-        vertex_array_pointer("a_normal", 3, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,norm));
-        vertex_array_pointer("a_uv", 2, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,uv));
-        vertex_array_pointer("a_color", 4, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,col));
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo[i]);
         glDrawElements(GL_TRIANGLES, (GLsizei)ib[i].count, GL_UNSIGNED_INT, (void*)0);
     }
 }
@@ -279,7 +300,9 @@ void reshape( GLFWwindow* window, int width, int height )
     GLfloat h = (GLfloat) height / (GLfloat) width;
     glViewport(0, 0, (GLint) width, (GLint) height);
     mat4x4_frustum(p, -1.0, 1.0, -h, h, 5.0, 60.0);
-    uniform_matrix_4fv("u_projection", (const GLfloat *)p);
+    for(size_t i = 0; i < 3; i++) {
+        memcpy(UBO[i].projection, p, sizeof(p));
+    }
 }
 
 /*
@@ -292,6 +315,13 @@ static void animate(void)
     }
 }
 
+static GLuint bind(GLuint program)
+{
+    GLuint blockIndex = glGetUniformBlockIndex(program, "UBO");
+    glUniformBlockBinding(program, blockIndex, 0);
+    return GL_TRUE;
+}
+
 /*
  * OpenGL initialization
  */
@@ -300,9 +330,14 @@ static void init(void)
     GLuint shaders[2];
 
     /* shader program */
-    shaders[0] = compile_shader(GL_VERTEX_SHADER, vert_shader_filename);
-    shaders[1] = compile_shader(GL_FRAGMENT_SHADER, frag_shader_filename);
-    program = link_program(shaders, 2, NULL);
+    if (use_spir) {
+        shaders[0] = compile_shader(GL_VERTEX_SHADER, vert_shader_spir_filename);
+        shaders[1] = compile_shader(GL_FRAGMENT_SHADER, frag_shader_spir_filename);
+    } else {
+        shaders[0] = compile_shader(GL_VERTEX_SHADER, vert_shader_glsl_filename);
+        shaders[1] = compile_shader(GL_FRAGMENT_SHADER, frag_shader_glsl_filename);
+    }
+    program = link_program(shaders, 2, bind);
 
     /* create gear vertex and index buffers */
     for (size_t i = 0; i < 3; i++) {
@@ -314,14 +349,30 @@ static void init(void)
     gear(&vb[2], &ib[2], 1.3f, 2.f, 0.5f, 10, 0.7f,(vec4f){0.2f, 0.2f, 1.f, 1.f});
 
     /* create vertex array, vertex buffer and index buffer objects */
+    glGenVertexArrays(3, vao);
     for (size_t i = 0; i < 3; i++) {
+        glBindVertexArray(vao[i]);
         vertex_buffer_create(&vbo[i], GL_ARRAY_BUFFER, vb[i].data, vb[i].count * sizeof(vertex));
         vertex_buffer_create(&ibo[i], GL_ELEMENT_ARRAY_BUFFER, ib[i].data, ib[i].count * sizeof(uint));
+        vertex_array_pointer("a_pos", 3, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,pos));
+        vertex_array_pointer("a_normal", 3, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,norm));
+        vertex_array_pointer("a_uv", 2, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,uv));
+        vertex_array_pointer("a_color", 4, GL_FLOAT, 0, sizeof(vertex), offsetof(vertex,col));
+    }
+
+    glGenBuffers(3, ubo);
+    for(size_t i = 0; i < 3; i++) {
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo[i]);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO[i]), NULL, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
     /* set light position uniform */
     glUseProgram(program);
-    uniform_3f("u_lightpos", 5.f, 5.f, 10.f);
+    vec4 lightpos = { 5.f, 5.f, 10.f, 0.f };
+    for(size_t i = 0; i < 3; i++) {
+        memcpy(UBO[i].lightpos, lightpos, sizeof(lightpos));
+    }
 
     /* enable OpenGL capabilities */
     glEnable(GL_CULL_FACE);
@@ -352,12 +403,60 @@ void key( GLFWwindow* window, int k, int s, int action, int mods )
 }
 
 /*
+ * help text
+ */
+static void print_help(int argc, char **argv)
+{
+    fprintf(stderr,
+        "Usage: %s [options]\n"
+        "\n"
+        "Options:\n"
+        "  -s, --spir                         SPIR-V binary shader modules\n"
+        "  -h, --help                         command line help\n",
+        argv[0]);
+}
+
+/*
+ * command-line option parsing
+ */
+
+static int match_opt(const char *arg, const char *opt, const char *longopt)
+{
+    return strcmp(arg, opt) == 0 || strcmp(arg, longopt) == 0;
+}
+
+static void parse_options(int argc, char **argv)
+{
+    int i = 1;
+    while (i < argc) {
+        if (match_opt(argv[i], "-s", "--spir")) {
+            use_spir++;
+            i++;
+        } else if (match_opt(argv[i], "-h", "--help")) {
+            help++;
+            i++;
+        } else {
+            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
+            help++;
+            break;
+        }
+    }
+
+    if (help) {
+        print_help(argc, argv);
+        exit(1);
+    }
+}
+
+/*
  * main program
  */
 int main(int argc, char *argv[])
 {
     GLFWwindow* window;
     int width, height;
+
+    parse_options(argc, argv);
 
     if (!glfwInit())
     {

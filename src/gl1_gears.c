@@ -27,7 +27,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef HAVE_GLAD
+#include <glad/glad.h>
+#else
 #include <GL/gl.h>
+#endif
+
 #include <GLFW/glfw3.h>
 
 static GLfloat view_dist = -40.0f;
@@ -314,6 +319,10 @@ int main(int argc, char *argv[])
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
     glfwGetFramebufferSize(window, &width, &height);
+
+#ifdef HAVE_GLAD
+    gladLoadGL();
+#endif
 
     init();
     reshape(window, width, height);
