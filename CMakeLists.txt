@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 3.12)
 project(vkgears VERSION 0.0.1)
 
+set (VULKAN_SDK "/opt/vulkan/1.2.182.0/x86_64")
+set (SHADER_DIR shaders)
+
 include(CheckLibraryExists)
 check_library_exists(m sqrtf "" HAVE_LIB_M)
 if (HAVE_LIB_M)
@@ -14,6 +17,13 @@ pkg_check_modules(VULKAN REQUIRED vulkan)
 # Find OpenGL library
 include(FindOpenGL)
 
+# Find Vulkan library
+include(FindVulkan)
+if (NOT Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
+    find_program (GLSL_LANG_VALIDATOR NAMES glslangValidator PATHS ${VULKAN_SDK}/bin)
+    set(Vulkan_GLSLANG_VALIDATOR_EXECUTABLE "${GLSL_LANG_VALIDATOR}")
+endif()
+
 # set defaults for options
 set (OPENGL_EXAMPLES_DEFAULT ON)
 set (VULKAN_EXAMPLES_DEFAULT ON)
@@ -23,11 +33,12 @@ endif ()
 if (NOT OpenGL_OpenGL_FOUND)
     set (OPENGL_EXAMPLES_DEFAULT OFF)
 endif ()
-if (NOT VULKAN_FOUND)
+if (NOT Vulkan_FOUND)
     set (VULKAN_EXAMPLES_DEFAULT OFF)
 endif ()
-
-set (SHADER_DIR shaders)
+if(NOT Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
+    set (VULKAN_EXAMPLES_DEFAULT OFF)
+endif()
 
 # user configurable options
 option(OPENGL_EXAMPLES "Build OpenGL examples" ${OPENGL_EXAMPLES_DEFAULT})
@@ -109,13 +120,15 @@ if (VULKAN_EXAMPLES)
 
     foreach(shader ${SHADER_SOURCE})
         add_custom_command(OUTPUT ${shader}.spv DEPENDS ${shader}
-            COMMAND ${GLSL_LANG_VALIDATOR} -V ${shader} -o ${shader}.spv)
+            COMMAND ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE} -V ${shader} -o ${shader}.spv)
         list(APPEND SHADERS ${shader}.spv)
     endforeach(shader)
 
+    include_directories(${Vulkan_INCLUDE_DIRS})
+
     message("-- Adding: vk1_gears")
     add_executable(vk1_gears src/vk1_gears.c ${SHADERS})
-    target_link_libraries(vk1_gears vulkan ${GLFW_LIBS_ALL})
+    target_link_libraries(vk1_gears ${Vulkan_LIBRARIES} ${GLFW_LIBS_ALL})
 
     if (EXTERNAL_GLFW)
         add_dependencies(vk1_gears GLFW-build)
