@@ -1,10 +1,10 @@
-#version 140
+#version 120
 
-in vec3 v_normal;
-in vec2 v_uv;
-in vec4 v_color;
-in vec3 v_fragPos;
-in vec3 v_lightDir;
+varying vec3 v_normal;
+varying vec2 v_uv;
+varying vec4 v_color;
+varying vec3 v_fragPos;
+varying vec3 v_lightDir;
 
 void main()
 {

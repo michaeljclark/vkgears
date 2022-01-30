@@ -50,8 +50,8 @@
 #include <vulkan/vulkan_core.h>
 #include <GLFW/glfw3.h>
 
-static const char* frag_shader_filename = "shaders/gears.frag.spv";
-static const char* vert_shader_filename = "shaders/gears.vert.spv";
+static const char* frag_shader_filename = "shaders/gears.v450.frag.spv";
+static const char* vert_shader_filename = "shaders/gears.v450.vert.spv";
 
 typedef unsigned uint;
 
@@ -940,7 +940,7 @@ static void gears_create_image(gears_app *app, gears_image_buffer *imbuf,
         },
     };
     VK_CALL(vkCreateImageView
-        (app->device, &ivci, NULL, &imbuf->view));    
+        (app->device, &ivci, NULL, &imbuf->view));
 }
 
 static void gears_destroy_image(gears_app *app, gears_image_buffer *imbuf)
@@ -1474,7 +1474,7 @@ static void gears_create_pipeline(gears_app *app)
         .attachmentCount = 1,
         .pAttachments = &as,
         .blendConstants = { 0, 0, 0, 0 },
-    };        
+    };
     const VkPipelineViewportStateCreateInfo vp = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .pNext = NULL,
@@ -1903,7 +1903,7 @@ static void gears_record_command_buffers(gears_app *app, size_t j)
 
 static void gears_init(gears_app *app, const int argc, const char **argv)
 {
-    gears_init_app(app, argv[0], 300, 300);
+    gears_init_app(app, argv[0], 512, 512);
     gears_parse_options(app, argc, argv);
     gears_init_glfw(app);
     gears_create_window(app);
