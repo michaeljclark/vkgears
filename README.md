@@ -12,10 +12,10 @@ and uniform buffers. It is a good, simple, complete and stand-alone example.
 ## Project Structure
 
 - `src/gl1_gears.c` - original GLFW port of the public domain gears demo.
-- `src/gl2_gears.c` - OpenGL 2.x port of the public domain gears demo.
-- `src/gl3_gears.c` - OpenGL 3.x port of the public domain gears demo.
-- `src/gl4_gears.c` - OpenGL 4.x port of the public domain gears demo.
-- `src/vk1_gears.c` - Vulkan 1.x port of the public domain gears demo.
+- `src/gl2_gears.c` - OpenGL 2.1 port of the public domain gears demo.
+- `src/gl3_gears.c` - OpenGL 3.2 port of the public domain gears demo.
+- `src/gl4_gears.c` - OpenGL 4.5 port of the public domain gears demo.
+- `src/vk1_gears.c` - Vulkan 1.1 port of the public domain gears demo.
 - `src/linmath.h` - public domain linear algebra header functions.
 - `src/gl2_util.h` - header functions for OpenGL ES2 buffers and shaders.
 
@@ -25,7 +25,7 @@ The project includes several versions of gears ported to multiple APIs.
 
 ### gl1_gears
 
-_gl1_gears_ is the OpenGL 1.0 port of gears using immediate mode
+_gl1_gears_ is the OpenGL 1.x port of gears using immediate mode
 vertices, call lists and the fixed function lighting model. This
 code is derived from the gears port included with GLFW.
 
@@ -38,13 +38,13 @@ contains shader loading and a simple vertex and index buffer implementation.
 
 ### gl3_gears
 
-_gl3_gears_ is mostly the same as _gl2_gears_ with the addition of vertex
-array objects which were added in OpenGL 3.x.
+_gl3_gears_ is like _gl2_gears_ with the addition of vertex array objects
+which were added in OpenGL 3.x.
 
 ### gl4_gears
 
-_gl4_gears_ is mostly the same as _gl3_gears_ with the addition of uniform
-buffer objects and SPIR-V binary shaders which were added in OpenGL 4.x.
+_gl4_gears_ is like _gl3_gears_ with the addition of uniform buffer objects
+and SPIR-V binary shaders which were added in OpenGL 4.x.
 
 ### vk1_gears
 
