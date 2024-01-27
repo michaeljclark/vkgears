@@ -94,7 +94,7 @@ else ()
 endif ()
 
 if (OPENGL_EXAMPLES)
-    foreach(prog IN ITEMS gl1_gears gl2_gears gl3_gears gl4_gears)
+    foreach(prog IN ITEMS gl1_gears gl2_gears gl3_gears gl4_1_gears gl4_gears)
         message("-- Adding: ${prog}")
         add_executable(${prog} src/${prog}.c)
         target_link_libraries(${prog} ${GLFW_LIBS_ALL} ${OPENGL_LOADER_LIBS})
