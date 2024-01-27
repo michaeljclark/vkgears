@@ -102,7 +102,7 @@ static size_t index_buffer_size(index_buffer *ib);
 static uint index_buffer_count(index_buffer *ib);
 static void index_buffer_add(index_buffer *ib,
     const uint *data, uint count, uint addend);
-static void index_buffer_add_primitves(index_buffer *ib,
+static void index_buffer_add_primitives(index_buffer *ib,
     primitive_type type, uint count, uint addend);
 
 /*
@@ -215,7 +215,7 @@ static void index_buffer_add(index_buffer *ib,
     }
 }
 
-static void index_buffer_add_primitves(index_buffer *ib,
+static void index_buffer_add_primitives(index_buffer *ib,
     primitive_type type, uint count, uint addend)
 {
     static const uint tri[] = {0,1,2};

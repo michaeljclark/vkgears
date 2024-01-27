@@ -196,7 +196,7 @@ static uint32_t gears_buffer_count(gears_buffer *vb);
 static uint32_t gears_buffer_add_vertex(gears_buffer *vb, gears_vertex vertex);
 static void gears_buffer_add_indices(gears_buffer *vb,
     const uint32_t *indices, uint32_t count, uint32_t addend);
-static void gears_buffer_add_indices_primitves(gears_buffer *vb,
+static void gears_buffer_add_indices_primitives(gears_buffer *vb,
     gears_primitive_type type, uint count, uint addend);
 
 void panic(const char *fmt, ...)
@@ -321,7 +321,7 @@ static void gears_buffer_add_indices(gears_buffer *vb,
     }
 }
 
-static void gears_buffer_add_indices_primitves(gears_buffer *vb,
+static void gears_buffer_add_indices_primitives(gears_buffer *vb,
     gears_primitive_type type, uint count, uint addend)
 {
     static const uint tri[] = {0,1,2};
@@ -1626,7 +1626,7 @@ gear(gears_buffer *vb, gears_buffer *ib,
             vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
         }
     }
-    gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
+    gears_buffer_add_indices_primitives(ib, gears_topology_quad_strip, teeth*2, idx);
 
     /* draw front sides of teeth */
     da = 2.f*(float) M_PI / teeth / 4.f;
@@ -1638,7 +1638,7 @@ gear(gears_buffer *vb, gears_buffer *ib,
         vertex_3f(r2*cosf(angle+2*da), r2*sinf(angle+2*da), width*0.5f);
         vertex_3f(r1*cosf(angle+3*da), r1*sinf(angle+3*da), width*0.5f);
     }
-    gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth, idx);
+    gears_buffer_add_indices_primitives(ib, gears_topology_quads, teeth, idx);
 
     normal_3f(0.0, 0.0, -1.0);
 
@@ -1653,7 +1653,7 @@ gear(gears_buffer *vb, gears_buffer *ib,
             vertex_3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
         }
     }
-    gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth*2, idx);
+    gears_buffer_add_indices_primitives(ib, gears_topology_quad_strip, teeth*2, idx);
 
     /* draw back sides of teeth */
     da = 2.f*(float) M_PI / teeth / 4.f;
@@ -1665,7 +1665,7 @@ gear(gears_buffer *vb, gears_buffer *ib,
         vertex_3f(r2*cosf(angle+1*da), r2*sinf(angle+1*da), -width*0.5f);
         vertex_3f(r1*cosf(angle), r1*sinf(angle), -width*0.5f);
     }
-    gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth, idx);
+    gears_buffer_add_indices_primitives(ib, gears_topology_quads, teeth, idx);
 
     /* draw outward faces of teeth */
     idx = gears_buffer_count(vb);
@@ -1698,7 +1698,7 @@ gear(gears_buffer *vb, gears_buffer *ib,
         vertex_3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), -width*0.5f);
         vertex_3f(r1*cosf(angle+4*da), r1*sinf(angle+4*da), width*0.5f);
     }
-    gears_buffer_add_indices_primitves(ib, gears_topology_quads, teeth*4, idx);
+    gears_buffer_add_indices_primitives(ib, gears_topology_quads, teeth*4, idx);
 
     /* draw inside radius cylinder */
     idx = gears_buffer_count(vb);
@@ -1708,7 +1708,7 @@ gear(gears_buffer *vb, gears_buffer *ib,
         vertex_3f(r0*cosf(angle), r0*sinf(angle), -width*0.5f);
         vertex_3f(r0*cosf(angle), r0*sinf(angle), width*0.5f);
     }
-    gears_buffer_add_indices_primitves(ib, gears_topology_quad_strip, teeth, idx);
+    gears_buffer_add_indices_primitives(ib, gears_topology_quad_strip, teeth, idx);
 }
 
 static void gears_destroy_vertex_buffers(gears_app *app)

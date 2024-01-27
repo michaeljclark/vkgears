@@ -132,7 +132,7 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
             vertex_3f(r1*ca3, r1*sa3, width*0.5f, nr1*ca3, nr1*sa3);
         }
     }
-    index_buffer_add_primitves(ib, primitive_topology_quad_strip, teeth*2, idx);
+    index_buffer_add_primitives(ib, primitive_topology_quad_strip, teeth*2, idx);
 
     /* draw front sides of teeth */
     da = 2.f*(float) M_PI / teeth / 4.f;
@@ -152,7 +152,7 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
         vertex_3f(r2*ca2, r2*sa2, width*0.5f, nr2*ca2, nr2*sa2);
         vertex_3f(r1*ca3, r1*sa3, width*0.5f, nr1*ca3, nr1*sa3);
     }
-    index_buffer_add_primitves(ib, primitive_topology_quads, teeth, idx);
+    index_buffer_add_primitives(ib, primitive_topology_quads, teeth, idx);
 
     normal_3f(0.f, 0.f, -1.f);
 
@@ -171,7 +171,7 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
             vertex_3f(r0*ca0, r0*sa0, -width*0.5f, nr0*ca0, nr0*sa0);
         }
     }
-    index_buffer_add_primitves(ib, primitive_topology_quad_strip, teeth*2, idx);
+    index_buffer_add_primitives(ib, primitive_topology_quad_strip, teeth*2, idx);
 
     /* draw back sides of teeth */
     da = 2.f*(float) M_PI / teeth / 4.f;
@@ -191,7 +191,7 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
         vertex_3f(r2*ca1, r2*sa1, -width*0.5f, nr2*ca1, nr2*sa1);
         vertex_3f(r1*ca0, r1*sa0, -width*0.5f, nr1*ca0, nr1*sa0);
     }
-    index_buffer_add_primitves(ib, primitive_topology_quads, teeth, idx);
+    index_buffer_add_primitives(ib, primitive_topology_quads, teeth, idx);
 
     /* draw outward faces of teeth */
     idx = vertex_buffer_count(vb);
@@ -234,7 +234,7 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
         vertex_3f(r1*ca4, r1*sa4, -width*0.5f, nr1*ca4, nr1*sa4);
         vertex_3f(r1*ca4, r1*sa4,  width*0.5f, nr1*ca4, nr1*sa4);
     }
-    index_buffer_add_primitves(ib, primitive_topology_quads, teeth*4, idx);
+    index_buffer_add_primitives(ib, primitive_topology_quads, teeth*4, idx);
 
     /* draw inside radius cylinder */
     idx = vertex_buffer_count(vb);
@@ -246,7 +246,7 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
         vertex_3f(r0*ca0, r0*sa0, -width*0.5f, nr0*ca0, nr0*sa0);
         vertex_3f(r0*ca0, r0*sa0,  width*0.5f, nr0*ca0, nr0*sa0);
     }
-    index_buffer_add_primitves(ib, primitive_topology_quad_strip, teeth, idx);
+    index_buffer_add_primitives(ib, primitive_topology_quad_strip, teeth, idx);
 }
 
 /*
