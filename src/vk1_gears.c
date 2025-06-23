@@ -766,6 +766,19 @@ static void gears_create_swapchain(gears_app *app)
         (app->physdev, app->surface, &app->surface_capabilities));
 
     glfwGetFramebufferSize(app->window, &app->width, &app->height);
+
+    /* from the official documentation:
+     * currentExtent is the current width and height of the surface,
+     * or the special value (0xFFFFFFFF, 0xFFFFFFFF) indicating that
+     * the surface size will be determined by the extent of a swapchain
+     * targeting the surface. */
+    if (app->surface_capabilities.currentExtent.width == 0xffffffff) {
+        app->surface_capabilities.currentExtent.width = app->width;
+    }
+    if (app->surface_capabilities.currentExtent.height == 0xffffffff) {
+        app->surface_capabilities.currentExtent.height = app->height;
+    }
+
     assert(app->surface_capabilities.currentExtent.width == app->width);
     assert(app->surface_capabilities.currentExtent.height == app->height);
 
