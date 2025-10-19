@@ -17,7 +17,7 @@ and uniform buffers. It is a good, simple, complete and stand-alone example.
 - `src/gl4_gears.c` - OpenGL 4.5 port of the public domain gears demo.
 - `src/vk1_gears.c` - Vulkan 1.1 port of the public domain gears demo.
 - `src/linmath.h` - public domain linear algebra header functions.
-- `src/gl2_util.h` - header functions for OpenGL ES2 buffers and shaders.
+- `src/gl2_nano.h` - header functions for OpenGL ES2 buffers and shaders.
 
 ## Examples
 
@@ -33,7 +33,7 @@ code is derived from the gears port included with GLFW.
 
 _gl2_gears_ is the OpenGL 2.x port of gears using GLSL shaders.
 It has been ported to use Wolfgang Draxinger's `"linmath.h"` `mat4x4`
-for constructing the model, view and projection matrices. `"gl2_util.h"`
+for constructing the model, view and projection matrices. `"gl2_nano.h"`
 contains shader loading and a simple vertex and index buffer implementation.
 
 ### gl3_gears
