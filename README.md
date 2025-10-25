@@ -1,6 +1,6 @@
 # vkgears
 
-Port of the iconic gears demo to GLSL and the Vulkan API using GLFW.
+Port of the iconic OpenGL gears demo to GLSL and the Vulkan API using GLFW.
 
 ## Overview
 
