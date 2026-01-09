@@ -295,7 +295,7 @@ static void draw(void)
 /*
  * OpenGL reshape
  */
-void reshape( GLFWwindow* window, int width, int height )
+void reshape(GLFWwindow* window, int width, int height)
 {
     GLfloat h = (GLfloat) height / (GLfloat) width;
     glViewport(0, 0, (GLint) width, (GLint) height);
@@ -382,9 +382,9 @@ static void init(void)
 /*
  * keyboard dispatch
  */
-void key( GLFWwindow* window, int k, int s, int action, int mods )
+void key(GLFWwindow* window, int k, int s, int action, int mods)
 {
-    if( action != GLFW_PRESS ) return;
+    if(action != GLFW_PRESS) return;
 
     float shiftz = (mods & GLFW_MOD_SHIFT ? -1.0 : 1.0);
 
