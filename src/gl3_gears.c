@@ -240,6 +240,10 @@ static void gear(vertex_buffer *vb, index_buffer *ib,
  */
 static void draw(void)
 {
+    if (animation) {
+        angle = 100.f * (float) glfwGetTime();
+    }
+
     /* create gear model and view matrices */
     mat4x4_translate(v, 0.0, 0.0, view_dist);
     mat4x4_rotate(v, v, 1.0, 0.0, 0.0, (view_rotx / 180) * M_PI);
@@ -277,16 +281,6 @@ void reshape(GLFWwindow* window, int width, int height)
     glViewport(0, 0, (GLint) width, (GLint) height);
     mat4x4_frustum(p, -1.0, 1.0, -h, h, 5.0, 60.0);
     uniform_matrix_4fv("u_projection", (const GLfloat *)p);
-}
-
-/*
- * animation update
- */
-static void animate(void)
-{
-    if (animation) {
-        angle = 100.f * (float) glfwGetTime();
-    }
 }
 
 /*
@@ -396,7 +390,6 @@ int main(int argc, char *argv[])
 
     while(!glfwWindowShouldClose(window)) {
         draw();
-        animate();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

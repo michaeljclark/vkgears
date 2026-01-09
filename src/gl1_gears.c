@@ -173,6 +173,10 @@ gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
  */
 static void draw(void)
 {
+    if (animation) {
+        angle = 100.f * (float) glfwGetTime();
+    }
+
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -216,16 +220,6 @@ void reshape(GLFWwindow* window, int width, int height)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glTranslatef(0.0, 0.0, view_dist);
-}
-
-/*
- * animation update
- */
-static void animate(void)
-{
-    if (animation) {
-        angle = 100.f * (float) glfwGetTime();
-    }
 }
 
 /*
@@ -331,7 +325,6 @@ int main(int argc, char *argv[])
 
     while(!glfwWindowShouldClose(window)) {
         draw();
-        animate();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
