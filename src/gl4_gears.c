@@ -469,7 +469,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-    window = glfwCreateWindow(512, 512, "GL2 Gears", NULL, NULL);
+    window = glfwCreateWindow(512, 512, "GL4 Gears", NULL, NULL);
     if (!window)
     {
         fprintf(stderr, "Failed to open GLFW window\n");
