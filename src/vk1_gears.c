@@ -362,11 +362,11 @@ static void gears_glfw_error(int error_code, const char* error_desc)
     fprintf(stderr, "glfw_error: code=%d desc=%s\n", error_code, error_desc);
 }
 
-static void gears_glfw_key( GLFWwindow* window, int k, int s, int action, int mods )
+static void gears_glfw_key(GLFWwindow* window, int k, int s, int action, int mods)
 {
     gears_app *app = (gears_app*)glfwGetWindowUserPointer(window);
 
-    if( action != GLFW_PRESS ) return;
+    if (action != GLFW_PRESS) return;
 
     float shiftz = (mods & GLFW_MOD_SHIFT ? -1.0 : 1.0);
 

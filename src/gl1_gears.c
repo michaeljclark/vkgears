@@ -265,7 +265,7 @@ static void init(void)
  */
 void key(GLFWwindow* window, int k, int s, int action, int mods)
 {
-    if(action != GLFW_PRESS) return;
+    if (action != GLFW_PRESS) return;
 
     float shiftz = (mods & GLFW_MOD_SHIFT ? -1.0 : 1.0);
 
